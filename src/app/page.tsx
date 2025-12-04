@@ -23,15 +23,17 @@ export default async function Home() {
 
   return (
     <div className="space-y-6">
-      <AutoIngester />
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-3xl font-bold text-gray-500">Recent Matches</h1>
-        <Link
-          href="/stats"
-          className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded font-semibold transition-colors"
-        >
-          View Statistics
-        </Link>
+        <div className="flex items-center gap-3 flex-wrap">
+          <AutoIngester />
+          <Link
+            href="/stats"
+            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded font-semibold transition-colors"
+          >
+            View Statistics
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-4">

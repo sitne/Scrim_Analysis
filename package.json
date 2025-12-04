@@ -1,12 +1,19 @@
 {
-  "name": "app",
-  "version": "0.1.0",
+  "name": "scrim-analyzer",
+  "version": "1.0.0",
+  "description": "Professional match analytics for VALORANT scrims",
+  "author": "Scrim Analyzer Team",
   "private": true,
+  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && npm run electron:start\"",
+    "electron:start": "npx tsc -p electron/tsconfig.json && cross-env NODE_ENV=development npx electron .",
+    "electron:build": "npm run build && npx tsc -p electron/tsconfig.json && npx electron-builder",
+    "electron:pack": "npm run build && npx tsc -p electron/tsconfig.json && npx electron-builder --dir"
   },
   "dependencies": {
     "@prisma/client": "^6.1.0",
@@ -24,15 +31,64 @@
     "@types/node": "^20.19.25",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^39.2.5",
+    "electron-builder": "^26.0.12",
     "eslint": "^9",
     "eslint-config-next": "16.0.5",
+    "png-to-ico": "^3.0.1",
     "prisma": "^6.1.0",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.6",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^9.0.3"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
+  },
+  "build": {
+    "appId": "com.scrimanalyzer.app",
+    "productName": "Scrim Analyzer",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist-electron/**/*",
+      ".next/**/*",
+      "public/**/*",
+      "prisma/**/*",
+      "matches/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "prisma",
+        "to": "prisma"
+      },
+      {
+        "from": "matches",
+        "to": "matches"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Scrim Analyzer"
+    }
   }
 }

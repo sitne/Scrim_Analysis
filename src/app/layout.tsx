@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VALORANT Pro Analytics",
-  description: "Professional match analytics for VALORANT",
+  title: "Scrim Analyzer",
+  description: "Professional match analytics for VALORANT scrims",
 };
 
 import { fetchValorantData } from "@/lib/valorant-api";
@@ -40,7 +40,7 @@ export default async function RootLayout({
                 href="/"
                 className="inline-block text-xl font-bold bg-gradient-to-r from-purple-500 to-purple-500 bg-clip-text text-transparent hover:from-purple-400 hover:to-blue-400 transition-all cursor-pointer"
               >
-                VALORANT Pro Analytics
+                Scrim Analyzer
               </Link>
             </div>
           </nav>
