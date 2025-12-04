@@ -162,7 +162,7 @@ export function RoundHistoryWithDetails({
         <div className="space-y-6">
             {/* Round History - Simple Grid */}
             <div className="space-y-4">
-                <h2 className="text-2xl font-bold">ラウンド履歴</h2>
+                <h2 className="text-2xl font-bold">Round History</h2>
                 <div className="flex flex-wrap gap-2 items-center">
                     {rounds.map((round) => (
                         <Fragment key={round.roundNum}>

@@ -111,6 +111,8 @@ model RoundPlayerStats {
   
   score               Int?
   kills               Int?
+  deaths              Int?
+  assists             Int?
   damage              Int?
   
   loadoutValue        Int?

@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Valorant Pro Analytics",
-  description: "Professional match analytics for Valorant",
+  title: "VALORANT Pro Analytics",
+  description: "Professional match analytics for VALORANT",
 };
 
 import { fetchValorantData } from "@/lib/valorant-api";
@@ -34,11 +34,11 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-950 text-gray-100`}
       >
         <div className="min-h-screen">
-          <nav className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm">
+          <nav className="border-b border-white/10 bg-[#0f1923]/90 backdrop-blur-md">
             <div className="container mx-auto px-4 py-4">
               <Link
                 href="/"
-                className="inline-block text-xl font-bold bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent hover:from-red-400 hover:to-orange-400 transition-all cursor-pointer"
+                className="inline-block text-xl font-bold bg-gradient-to-r from-purple-500 to-purple-500 bg-clip-text text-transparent hover:from-purple-400 hover:to-blue-400 transition-all cursor-pointer"
               >
                 VALORANT Pro Analytics
               </Link>

@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useCallback, useState, useEffect } from 'react';
-import { getAgentName, getMapDisplayName } from '@/lib/utils';
+import { getAgentName, getMapDisplayName, getTagColor } from '@/lib/utils';
 
 interface FilterBarProps {
     maps: string[];
@@ -31,16 +31,27 @@ export function FilterBar({
     const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
     const [dateRange, setDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
     const [playerSearch, setPlayerSearch] = useState<string>('');
+    const [availableTags, setAvailableTags] = useState<string[]>([]);
+    const [includeTags, setIncludeTags] = useState<string[]>([]);
+    const [excludeTags, setExcludeTags] = useState<string[]>([]);
 
     // Sync state from URL
     useEffect(() => {
         setSelectedMaps(searchParams.get('maps')?.split(',').filter(Boolean) || []);
         setSelectedAgents(searchParams.get('agents')?.split(',').filter(Boolean) || []);
         setSelectedPlayers(searchParams.get('players')?.split(',').filter(Boolean) || []);
+        setIncludeTags(searchParams.get('includeTags')?.split(',').filter(Boolean) || []);
+        setExcludeTags(searchParams.get('excludeTags')?.split(',').filter(Boolean) || []);
         setDateRange({
             start: searchParams.get('startDate') || '',
             end: searchParams.get('endDate') || ''
         });
+
+        // Fetch tags
+        fetch('/api/tags')
+            .then(res => res.json())
+            .then(data => setAvailableTags(data))
+            .catch(err => console.error('Failed to fetch tags', err));
     }, [searchParams]);
 
     const updateFilters = useCallback((newParams: Record<string, string | null>) => {
@@ -147,14 +158,14 @@ export function FilterBar({
             </div>
 
             <div className="flex flex-wrap gap-4 border-t border-gray-800 pt-4">
-                {/* Players Filter (My Team) */}
+                {/* Players Filter */}
                 <div className="flex-1 min-w-[200px]">
-                    <label className="block text-xs text-gray-400 mb-2 font-semibold">PLAYERS (MY TEAM)</label>
+                    <label className="block text-xs text-gray-400 mb-2 font-semibold">PLAYERS</label>
 
                     {/* Search Box */}
                     <input
                         type="text"
-                        placeholder="プレイヤーを検索..."
+                        placeholder="Search players..."
                         value={playerSearch}
                         onChange={(e) => setPlayerSearch(e.target.value)}
                         className="w-full mb-2 bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
@@ -180,7 +191,7 @@ export function FilterBar({
                             </button>
                         ))}
                         {filteredPlayers.length === 0 && (
-                            <div className="text-sm text-gray-500 py-2">該当するプレイヤーが見つかりません</div>
+                            <div className="text-sm text-gray-500 py-2">No players found</div>
                         )}
                     </div>
 
@@ -191,8 +202,8 @@ export function FilterBar({
                             className="mt-2 text-xs text-blue-400 hover:text-blue-300 underline"
                         >
                             {showAllPlayers
-                                ? '折りたたむ'
-                                : `もっと見る (残り ${filteredPlayers.length - PLAYERS_LIMIT}人)`
+                                ? 'Hide'
+                                : `Show more (${filteredPlayers.length - PLAYERS_LIMIT})`
                             }
                         </button>
                     )}
@@ -221,14 +232,57 @@ export function FilterBar({
                 )}
             </div>
 
+            {/* Tag Filters */}
+            {availableTags.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-800 pt-4">
+                    <div>
+                        <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">Include Tags</div>
+                        <div className="flex flex-wrap gap-2">
+                            {availableTags.map(tag => (
+                                <button
+                                    key={`inc-${tag}`}
+                                    onClick={() => handleMultiSelect('includeTags', includeTags, tag, setIncludeTags)}
+                                    className={`px-3 py-1 rounded text-xs font-medium transition-all border ${includeTags.includes(tag)
+                                        ? 'border-transparent text-white shadow-lg scale-105'
+                                        : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
+                                        }`}
+                                    style={includeTags.includes(tag) ? { backgroundColor: getTagColor(tag) } : {}}
+                                >
+                                    {tag}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">Exclude Tags</div>
+                        <div className="flex flex-wrap gap-2">
+                            {availableTags.map(tag => (
+                                <button
+                                    key={`exc-${tag}`}
+                                    onClick={() => handleMultiSelect('excludeTags', excludeTags, tag, setExcludeTags)}
+                                    className={`px-3 py-1 rounded text-xs font-medium transition-all border ${excludeTags.includes(tag)
+                                        ? 'bg-red-900/50 border-red-500 text-red-200 shadow-lg'
+                                        : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
+                                        }`}
+                                >
+                                    {tag}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Clear Filters */}
-            {(selectedMaps.length > 0 || selectedAgents.length > 0 || selectedPlayers.length > 0 || dateRange.start || dateRange.end) && (
+            {(selectedMaps.length > 0 || selectedAgents.length > 0 || selectedPlayers.length > 0 || dateRange.start || dateRange.end || includeTags.length > 0 || excludeTags.length > 0) && (
                 <div className="flex justify-end pt-2">
                     <button
                         onClick={() => {
                             setSelectedMaps([]);
                             setSelectedAgents([]);
                             setSelectedPlayers([]);
+                            setIncludeTags([]);
+                            setExcludeTags([]);
                             setDateRange({ start: '', end: '' });
                             router.push(pathname);
                         }}

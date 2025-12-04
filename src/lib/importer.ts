@@ -116,7 +116,23 @@ export async function importMatch(filePath: string) {
 
             // Create RoundPlayerStats
             if (round.playerStats) {
+                // Pre-calculate all kills in this round for death/assist counting
+                const allRoundKills = round.playerStats.flatMap((ps: any) => ps.kills || []);
+
                 for (const pStats of round.playerStats) {
+                    // Calculate deaths: count how many times this player was the victim
+                    const deaths = allRoundKills.filter((k: any) => k.victim === pStats.subject).length;
+
+                    // Calculate assists: count how many times this player was an assistant
+                    const assists = allRoundKills.filter((k: any) => {
+                        if (!k.assistants || !Array.isArray(k.assistants)) return false;
+                        return k.assistants.some((a: any) => {
+                            // Handle both string IDs and object structures
+                            if (typeof a === 'string') return a === pStats.subject;
+                            return a === pStats.subject || a.assistantId === pStats.subject || a.subject === pStats.subject;
+                        });
+                    }).length;
+
                     await prisma.roundPlayerStats.create({
                         data: {
                             matchId: matchInfo.matchId,
@@ -124,6 +140,8 @@ export async function importMatch(filePath: string) {
                             puuid: pStats.subject,
                             score: pStats.score,
                             kills: pStats.kills.length, // Count kills in this round
+                            deaths: deaths,
+                            assists: assists,
                             damage: pStats.damage.reduce((acc: number, curr: any) => acc + curr.damage, 0),
                             loadoutValue: pStats.economy?.loadoutValue,
                             weapon: pStats.economy?.weapon,

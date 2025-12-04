@@ -4,6 +4,7 @@ import { BombPlantHeatmap } from '@/components/BombPlantHeatmap';
 import { RoundHistoryWithDetails } from '@/components/RoundHistoryWithDetails';
 import { getAgentName, getAgentIconPath, getMapDisplayName } from '@/lib/utils';
 import { Prisma } from '@prisma/client';
+import { MatchTags } from '@/components/MatchTags';
 
 // Define precise type for Match with included relations
 type MatchDetailData = Prisma.MatchGetPayload<{
@@ -178,6 +179,9 @@ export default async function MatchPage(props: MatchPageProps) {
                         <p className="text-gray-400">
                             {gameStartDate.toLocaleString('ja-JP')}
                         </p>
+                        <div className="mt-3">
+                            <MatchTags matchId={match.matchId} />
+                        </div>
                     </div>
                     <div className="text-right">
                         <div className="text-5xl font-bold">
@@ -204,7 +208,7 @@ export default async function MatchPage(props: MatchPageProps) {
                         <table className="w-full">
                             <thead className="bg-gray-800 text-sm">
                                 <tr>
-                                    <th className="px-4 py-3 text-left text-white">プレイヤー</th>
+                                    <th className="px-4 py-3 text-left text-white">PLAYER</th>
                                     <th className="px-4 py-3 text-center text-white">ACS</th>
                                     <th className="px-4 py-3 text-center text-white">K</th>
                                     <th className="px-4 py-3 text-center text-white">D</th>
@@ -275,7 +279,7 @@ export default async function MatchPage(props: MatchPageProps) {
                         <table className="w-full">
                             <thead className="bg-gray-800 text-sm">
                                 <tr>
-                                    <th className="px-4 py-3 text-left text-white">プレイヤー</th>
+                                    <th className="px-4 py-3 text-left text-white">PLAYER</th>
                                     <th className="px-4 py-3 text-center text-white">ACS</th>
                                     <th className="px-4 py-3 text-center text-white">K</th>
                                     <th className="px-4 py-3 text-center text-white">D</th>

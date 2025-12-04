@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { getMapDisplayName } from '@/lib/utils';
 import { AutoIngester } from '@/components/AutoIngester';
+import { MatchTags } from '@/components/MatchTags';
 
 export default async function Home() {
   const matches = await prisma.match.findMany({
@@ -15,7 +16,8 @@ export default async function Home() {
         include: {
           player: true
         }
-      }
+      },
+      tags: true
     }
   });
 
@@ -23,7 +25,7 @@ export default async function Home() {
     <div className="space-y-6">
       <AutoIngester />
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-white">Recent Matches</h1>
+        <h1 className="text-3xl font-bold text-gray-500">Recent Matches</h1>
         <Link
           href="/stats"
           className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded font-semibold transition-colors"
@@ -49,6 +51,9 @@ export default async function Home() {
                 <div>
                   <div className="text-xl font-bold text-white mb-1">{mapName}</div>
                   <div className="text-sm text-gray-400">{date}</div>
+                  <div className="mt-2">
+                    <MatchTags matchId={match.matchId} />
+                  </div>
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-white">

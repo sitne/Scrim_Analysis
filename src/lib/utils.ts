@@ -30,4 +30,8 @@ export function getAgentRole(agentId: string | null | undefined): string {
     return data ? data.role : "Unknown";
 }
 
+export function getTagColor(tagName: string): string {
+    return '#374151'; // gray-700
+}
+
 

@@ -17,6 +17,8 @@ export default async function StatsPage(props: StatsPageProps) {
     const filterMaps = typeof searchParams.maps === 'string' ? searchParams.maps.split(',') : [];
     const filterAgents = typeof searchParams.agents === 'string' ? searchParams.agents.split(',') : [];
     const filterPlayers = typeof searchParams.players === 'string' ? searchParams.players.split(',') : [];
+    const includeTags = typeof searchParams.includeTags === 'string' ? searchParams.includeTags.split(',') : [];
+    const excludeTags = typeof searchParams.excludeTags === 'string' ? searchParams.excludeTags.split(',') : [];
     const startDate = typeof searchParams.startDate === 'string' ? searchParams.startDate : null;
     const endDate = typeof searchParams.endDate === 'string' ? searchParams.endDate : null;
 
@@ -41,8 +43,8 @@ export default async function StatsPage(props: StatsPageProps) {
         })
     ]);
 
-    const availableMaps = mapsData.map(m => m.mapId);
-    const availableAgents = agentsData.map(a => a.characterId!).filter(Boolean);
+    const availableMaps = mapsData.map(m => m.mapId).sort((a, b) => getMapDisplayName(a).localeCompare(getMapDisplayName(b)));
+    const availableAgents = agentsData.map(a => a.characterId!).filter(Boolean).sort((a, b) => getAgentName(a).localeCompare(getAgentName(b)));
     const availablePlayers = playersData
         .map(p => ({
             puuid: p.puuid,
@@ -74,6 +76,33 @@ export default async function StatsPage(props: StatsPageProps) {
             const end = new Date(endDate);
             end.setHours(23, 59, 59, 999);
             whereClause.gameStartMillis.lte = BigInt(end.getTime());
+        }
+    }
+
+    if (includeTags.length > 0) {
+        whereClause.tags = {
+            some: {
+                tagName: { in: includeTags }
+            }
+        };
+    }
+
+    if (excludeTags.length > 0) {
+        // If we already have a tags filter (from includeTags), we need to combine them.
+        // Prisma doesn't support multiple filters on the same relation field easily in the top-level object without AND.
+        // So we wrap it in AND.
+        if (whereClause.tags) {
+            whereClause.AND = [
+                { tags: whereClause.tags },
+                { tags: { none: { tagName: { in: excludeTags } } } }
+            ];
+            delete whereClause.tags;
+        } else {
+            whereClause.tags = {
+                none: {
+                    tagName: { in: excludeTags }
+                }
+            };
         }
     }
 
@@ -416,14 +445,14 @@ export default async function StatsPage(props: StatsPageProps) {
                             <table className="w-full text-left whitespace-nowrap">
                                 <thead className="bg-gray-800/50 text-gray-400 text-xs uppercase font-semibold">
                                     <tr>
-                                        <th className="px-4 py-3 text-left">プレイヤー</th>
+                                        <th className="px-4 py-3 text-left">PLAYER</th>
                                         <th className="px-4 py-3 text-center">ACS</th>
                                         <th className="px-4 py-3 text-center">K<span className="text-[10px] ml-0.5 text-gray-500">/M</span></th>
                                         <th className="px-4 py-3 text-center">D<span className="text-[10px] ml-0.5 text-gray-500">/M</span></th>
                                         <th className="px-4 py-3 text-center">A<span className="text-[10px] ml-0.5 text-gray-500">/M</span></th>
                                         <th className="px-4 py-3 text-center">K/D</th>
-                                        <th className="px-4 py-3 text-center">FK</th>
-                                        <th className="px-4 py-3 text-center">FD</th>
+                                        <th className="px-4 py-3 text-center">FK<span className="text-[10px] ml-0.5 text-gray-500">/M</span></th>
+                                        <th className="px-4 py-3 text-center">FD<span className="text-[10px] ml-0.5 text-gray-500">/M</span></th>
                                         <th className="px-4 py-3 text-center">MATCHES</th>
                                     </tr>
                                 </thead>
@@ -445,8 +474,8 @@ export default async function StatsPage(props: StatsPageProps) {
                                             <td className={`px-4 py-3 text-center font-mono font-semibold ${stat.kd >= 1 ? 'text-green-400' : 'text-red-400'}`}>
                                                 {stat.kd.toFixed(2)}
                                             </td>
-                                            <td className="px-4 py-3 text-center font-mono text-green-400">{stat.firstKills}</td>
-                                            <td className="px-4 py-3 text-center font-mono text-red-400">{stat.firstDeaths}</td>
+                                            <td className="px-4 py-3 text-center font-mono text-green-400">{(stat.firstKills / stat.matches).toFixed(1)}</td>
+                                            <td className="px-4 py-3 text-center font-mono text-red-400">{(stat.firstDeaths / stat.matches).toFixed(1)}</td>
                                             <td className="px-4 py-3 text-center font-mono text-gray-500">{stat.matches}</td>
                                         </tr>
                                     ))}
