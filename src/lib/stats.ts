@@ -2,12 +2,17 @@ import { Prisma } from '@prisma/client';
 import { getMapDisplayName, getAgentName, getAgentRole } from '@/lib/utils';
 
 // Define the Match type with included relations
+// Define the Match type with included relations
 export type MatchWithDetails = Prisma.MatchGetPayload<{
     include: {
         rounds: true;
         players: {
             include: {
-                player: true;
+                player: {
+                    include: {
+                        mergedTo: true;
+                    };
+                };
             };
         };
         kills: true;
@@ -82,6 +87,7 @@ export interface CompositionStat {
 }
 
 export function calculateStats(matches: MatchWithDetails[], filterPlayers: string[], filterAgents: string[]) {
+    // ... (Variables initialization)
     const totalMatches = matches.length;
     let totalRounds = 0;
 
@@ -102,12 +108,20 @@ export function calculateStats(matches: MatchWithDetails[], filterPlayers: strin
         let myTeamSide: string | null = null;
 
         if (filterPlayers.length > 0) {
-            const myTeamPlayer = match.players.find(p => filterPlayers.includes(p.puuid));
+            // Resolve filtered players to their effective PUUIDs for comparison is tricky here
+            // because filterPlayers contains effective PUUIDs.
+            // We need to check if any player in the match *resolves* to a filtered PUUID.
+
+            const myTeamPlayer = match.players.find(p => {
+                const effectivePuuid = p.player.mergedToPuuid || p.puuid;
+                return filterPlayers.includes(effectivePuuid);
+            });
             myTeamSide = myTeamPlayer?.teamId || null;
         }
 
         totalRounds += match.rounds.length;
 
+        // ... (Map Stats logic)
         // Map Stats
         if (!mapStatsMap.has(match.mapId)) {
             mapStatsMap.set(match.mapId, {
@@ -135,18 +149,29 @@ export function calculateStats(matches: MatchWithDetails[], filterPlayers: strin
 
         // Player & Agent Stats
         match.players.forEach(mp => {
+            // Resolve Player Identity (Merge Logic)
+            let effectivePuuid = mp.puuid;
+            let effectiveName = mp.player.alias || mp.player.gameName;
+            let effectiveTag = mp.player.tagLine;
+
+            if (mp.player.mergedToPuuid && mp.player.mergedTo) {
+                effectivePuuid = mp.player.mergedToPuuid;
+                effectiveName = mp.player.mergedTo.alias || mp.player.mergedTo.gameName;
+                effectiveTag = mp.player.mergedTo.tagLine;
+            }
+
             // Filter Players
-            if (filterPlayers.length > 0 && !filterPlayers.includes(mp.puuid)) return;
+            if (filterPlayers.length > 0 && !filterPlayers.includes(effectivePuuid)) return;
 
             // Filter Agents
             if (filterAgents.length > 0 && mp.characterId && !filterAgents.includes(mp.characterId)) return;
 
             // Player Stats
-            if (!playerStatsMap.has(mp.puuid)) {
-                playerStatsMap.set(mp.puuid, {
-                    puuid: mp.puuid,
-                    name: mp.player.gameName,
-                    tag: mp.player.tagLine,
+            if (!playerStatsMap.has(effectivePuuid)) {
+                playerStatsMap.set(effectivePuuid, {
+                    puuid: effectivePuuid,
+                    name: effectiveName,
+                    tag: effectiveTag,
                     matches: 0,
                     kills: 0,
                     deaths: 0,
@@ -157,7 +182,7 @@ export function calculateStats(matches: MatchWithDetails[], filterPlayers: strin
                     firstDeaths: 0
                 });
             }
-            const pStat = playerStatsMap.get(mp.puuid)!;
+            const pStat = playerStatsMap.get(effectivePuuid)!;
             pStat.matches++;
             pStat.kills += mp.kills || 0;
             pStat.deaths += mp.deaths || 0;
@@ -165,7 +190,9 @@ export function calculateStats(matches: MatchWithDetails[], filterPlayers: strin
             pStat.score += mp.score || 0;
             pStat.roundsPlayed += match.rounds.length;
 
-            // Agent Stats
+            // Agent Stats (Use effective PUUID for logic if needed, but here we aggregate by Agent ID)
+            // Note: If a player played multiple agents in different matches (or merged players did),
+            // this simple aggregation is fine.
             if (mp.characterId) {
                 if (!agentStatsMap.has(mp.characterId)) {
                     agentStatsMap.set(mp.characterId, { picks: 0, wins: 0, matches: 0 });

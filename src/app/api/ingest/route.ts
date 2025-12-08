@@ -54,6 +54,7 @@ export async function POST() {
             imported: importedCount,
             skipped: skippedCount,
             total: files.length,
+            matchesDir,
             details: results
         });
 

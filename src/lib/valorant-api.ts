@@ -14,11 +14,24 @@ interface ValorantMap {
     mapUrl: string;
     displayName: string;
     listViewIcon: string;
+    displayIcon: string; // Minimap image
+    xMultiplier: number;
+    yMultiplier: number;
+    xScalarToAdd: number;
+    yScalarToAdd: number;
 }
 
 // In-memory cache
 let agentCache: Record<string, { name: string; icon: string; role: string }> | null = null;
-let mapCache: Record<string, { name: string; icon: string }> | null = null;
+let mapCache: Record<string, {
+    name: string;
+    icon: string;
+    displayIcon: string;
+    xMultiplier: number;
+    yMultiplier: number;
+    xScalarToAdd: number;
+    yScalarToAdd: number;
+}> | null = null;
 let lastFetchTime = 0;
 const CACHE_DURATION = 1000 * 60 * 60; // 1 hour
 
@@ -55,7 +68,12 @@ export async function fetchValorantData() {
             // The API returns "mapUrl": "/Game/Maps/Pitt/Pitt"
             mapCache![map.mapUrl] = {
                 name: map.displayName,
-                icon: map.listViewIcon
+                icon: map.listViewIcon,
+                displayIcon: map.displayIcon,
+                xMultiplier: map.xMultiplier,
+                yMultiplier: map.yMultiplier,
+                xScalarToAdd: map.xScalarToAdd,
+                yScalarToAdd: map.yScalarToAdd
             };
         });
 
@@ -106,8 +124,24 @@ export function getMapData(mapId: string) {
     const fallbackName = Object.entries(fallbackMapNames).find(([key]) => key === internalName)?.[1];
 
     if (fallbackName) {
-        return { name: fallbackName, icon: '' };
+        return {
+            name: fallbackName,
+            icon: '',
+            displayIcon: '',
+            xMultiplier: 0,
+            yMultiplier: 0,
+            xScalarToAdd: 0,
+            yScalarToAdd: 0
+        };
     }
 
-    return { name: internalName || 'Unknown', icon: '' };
+    return {
+        name: internalName || 'Unknown',
+        icon: '',
+        displayIcon: '',
+        xMultiplier: 0,
+        yMultiplier: 0,
+        xScalarToAdd: 0,
+        yScalarToAdd: 0
+    };
 }

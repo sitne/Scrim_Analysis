@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
-import { BombPlantHeatmap } from '@/components/BombPlantHeatmap';
+import { MatchHeatmap } from '@/components/MatchHeatmap';
 import { RoundHistoryWithDetails } from '@/components/RoundHistoryWithDetails';
 import { getAgentName, getAgentIconPath, getMapDisplayName } from '@/lib/utils';
 import { Prisma } from '@prisma/client';
@@ -345,16 +345,48 @@ export default async function MatchPage(props: MatchPageProps) {
             {/* Round History with Details */}
             <RoundHistoryWithDetails rounds={match.rounds as any} players={match.players as any} kills={match.kills} />
 
-            {/* Bomb Plant Heatmap */}
+            {/* Match Heatmap */}
             <div className="space-y-4">
-                <BombPlantHeatmap
+                <MatchHeatmap
                     mapId={match.mapId}
-                    plantLocations={match.rounds
-                        .filter(r => r.plantLocationX !== null && r.plantLocationY !== null)
-                        .map(r => ({
-                            x: r.plantLocationX || 0,
-                            y: r.plantLocationY || 0
-                        }))}
+                    points={[
+                        // Plant locations
+                        ...match.rounds
+                            .filter(r => r.plantLocationX !== null && r.plantLocationY !== null)
+                            .map(r => ({
+                                x: r.plantLocationX || 0,
+                                y: r.plantLocationY || 0,
+                                type: 'plant' as const
+                            })),
+                        // Kill locations (Killer's position)
+                        ...match.kills
+                            .map(k => {
+                                if (!k.playerLocations || !k.killerId) return null;
+                                try {
+                                    const locations = JSON.parse(k.playerLocations);
+                                    const killerLoc = locations.find((l: any) => l.subject === k.killerId);
+                                    if (killerLoc && killerLoc.location) {
+                                        return {
+                                            x: killerLoc.location.x,
+                                            y: killerLoc.location.y,
+                                            type: 'kill' as const
+                                        };
+                                    }
+                                } catch (e) {
+                                    // Ignore parse errors
+                                }
+                                return null;
+                            })
+                            .filter((p): p is { x: number; y: number; type: 'kill' } => p !== null),
+                        // Death locations (Victim's position)
+                        ...match.kills
+                            .filter(k => k.victimLocationX !== null && k.victimLocationY !== null)
+                            .map(k => ({
+                                x: k.victimLocationX || 0,
+                                y: k.victimLocationY || 0,
+                                type: 'death' as const
+                            }))
+                    ]}
                 />
             </div>
         </div>

@@ -50,6 +50,11 @@ model Player {
   tagLine             String
   
   matches             MatchPlayer[]
+
+  alias               String?
+  mergedToPuuid       String?
+  mergedTo            Player?  @relation("PlayerMerges", fields: [mergedToPuuid], references: [puuid])
+  mergedFrom          Player[] @relation("PlayerMerges")
 }
 
 model MatchPlayer {

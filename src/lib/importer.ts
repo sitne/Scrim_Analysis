@@ -5,6 +5,12 @@ import path from 'path';
 export async function importMatch(filePath: string) {
     const rawData = fs.readFileSync(filePath, 'utf-8');
     const matchData = JSON.parse(rawData);
+
+    if (!matchData || !matchData.matchInfo) {
+        console.error(`Invalid match data in ${path.basename(filePath)}: matchInfo is missing`);
+        return { status: 'error', error: 'Invalid match data: matchInfo is missing' };
+    }
+
     const matchId = matchData.matchInfo.matchId;
 
     console.log(`Processing match: ${matchId} from ${path.basename(filePath)}`);
@@ -15,8 +21,19 @@ export async function importMatch(filePath: string) {
     });
 
     if (existingMatch) {
-        console.log(`Match ${matchId} already exists. Skipping.`);
-        return { status: 'skipped', matchId };
+        console.log(`Match ${matchId} already exists. Updating (overwriting)...`);
+
+        // Manual cascade delete since schema might not have Cascade on all relations
+        await prisma.$transaction([
+            prisma.roundPlayerStats.deleteMany({ where: { matchId } }),
+            prisma.killEvent.deleteMany({ where: { matchId } }),
+            prisma.damageEvent.deleteMany({ where: { matchId } }),
+            prisma.matchTag.deleteMany({ where: { matchId } }),
+            prisma.round.deleteMany({ where: { matchId } }),
+            prisma.matchPlayer.deleteMany({ where: { matchId } }),
+            prisma.match.delete({ where: { matchId } }),
+        ]);
+        console.log(`Deleted existing match ${matchId}`);
     }
 
     // 1. Create Match

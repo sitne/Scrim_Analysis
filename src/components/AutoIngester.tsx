@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, Check, FolderOpen, AlertCircle } from 'lucide-react';
+import { RefreshCw, Check, FolderOpen, AlertCircle, Settings } from 'lucide-react';
 
 export function AutoIngester() {
     const [status, setStatus] = useState<'idle' | 'checking' | 'importing' | 'done' | 'error'>('idle');
@@ -38,10 +38,7 @@ export function AutoIngester() {
         }
     }, [router]);
 
-    // Auto-ingest on mount
-    useEffect(() => {
-        ingest();
-    }, [ingest]);
+    // Auto-ingest removed - only manual import via button
 
     // Reset status after showing result
     useEffect(() => {
@@ -70,6 +67,19 @@ export function AutoIngester() {
                 <RefreshCw className={`w-4 h-4 ${status === 'checking' ? 'animate-spin' : ''}`} />
                 {status === 'checking' ? 'チェック中...' : 'マッチをインポート'}
             </button>
+
+
+
+            {/* Change Matches Folder Button (Electron only) */}
+            {typeof window !== 'undefined' && window.electron && (
+                <button
+                    onClick={() => window.electron?.changeMatchesDir()}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 transition-all duration-200"
+                    title="matchesフォルダの場所を変更"
+                >
+                    <Settings className="w-4 h-4" />
+                </button>
+            )}
 
             {status === 'done' && result && (
                 <div className={`

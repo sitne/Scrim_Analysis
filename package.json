@@ -12,8 +12,9 @@
     "lint": "eslint",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && npm run electron:start\"",
     "electron:start": "npx tsc -p electron/tsconfig.json && cross-env NODE_ENV=development npx electron .",
-    "electron:build": "npm run build && npx tsc -p electron/tsconfig.json && npx electron-builder",
-    "electron:pack": "npm run build && npx tsc -p electron/tsconfig.json && npx electron-builder --dir"
+    "electron:build": "node -e \"const fs=require('fs'); fs.rmSync('release', {recursive:true, force:true});\" && npm run build && node scripts/prepare-standalone.js && node scripts/prepare-prod-db.js && npx tsc -p electron/tsconfig.json && npx electron-builder",
+    "electron:pack": "npm run build && npx tsc -p electron/tsconfig.json && npx electron-builder --dir",
+    "electron:build-empty-matches": "node scripts/build-with-empty-matches.js"
   },
   "dependencies": {
     "@prisma/client": "^6.1.0",
@@ -56,21 +57,25 @@
     },
     "files": [
       "dist-electron/**/*",
-      ".next/**/*",
       "public/**/*",
-      "prisma/**/*",
-      "matches/**/*",
-      "node_modules/**/*",
       "package.json"
     ],
     "extraResources": [
       {
-        "from": "prisma",
-        "to": "prisma"
+        "from": ".next/standalone",
+        "to": "standalone"
       },
       {
-        "from": "matches",
-        "to": "matches"
+        "from": "prisma/prod/dev.db",
+        "to": "prisma/dev.db"
+      },
+      {
+        "from": "prisma/schema.prisma",
+        "to": "prisma/schema.prisma"
+      },
+      {
+        "from": "prisma/migrations",
+        "to": "prisma/migrations"
       }
     ],
     "win": {

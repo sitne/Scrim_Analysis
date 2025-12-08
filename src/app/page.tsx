@@ -4,6 +4,8 @@ import { getMapDisplayName } from '@/lib/utils';
 import { AutoIngester } from '@/components/AutoIngester';
 import { MatchTags } from '@/components/MatchTags';
 
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   const matches = await prisma.match.findMany({
     take: 10,
