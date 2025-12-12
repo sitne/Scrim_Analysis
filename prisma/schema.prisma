@@ -41,7 +41,7 @@ model TeamMember {
 
 model Match {
   matchId             String   @id
-  teamId              String
+  teamId              String?
   mapId               String
   gamePodId           String?
   gameLoopZone        String?
@@ -60,7 +60,7 @@ model Match {
   platformType        String?
   winningTeam         String?
   
-  team                Team     @relation(fields: [teamId], references: [id])
+  team                Team?     @relation(fields: [teamId], references: [id])
   players             MatchPlayer[]
   rounds              Round[]
   kills               KillEvent[]
