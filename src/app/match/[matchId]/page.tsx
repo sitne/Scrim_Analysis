@@ -363,7 +363,7 @@ export default async function MatchPage(props: MatchPageProps) {
                             .map(k => {
                                 if (!k.playerLocations || !k.killerId) return null;
                                 try {
-                                    const locations = JSON.parse(k.playerLocations);
+                                    const locations = k.playerLocations as any;
                                     const killerLoc = locations.find((l: any) => l.subject === k.killerId);
                                     if (killerLoc && killerLoc.location) {
                                         return {
