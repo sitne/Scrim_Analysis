@@ -93,7 +93,7 @@ export default async function Home() {
                   <div className="text-sm text-gray-400">
                     {date}
                     {memberships.length > 1 && (
-                      <span className="ml-2 text-gray-500">• {match.team.name}</span>
+                      <span className="ml-2 text-gray-500">• {match.team?.name}</span>
                     )}
                   </div>
                   <div className="mt-2">
