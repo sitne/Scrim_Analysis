@@ -1,14 +1,38 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { getMapDisplayName } from '@/lib/utils';
-import { AutoIngester } from '@/components/AutoIngester';
 import { MatchTags } from '@/components/MatchTags';
+import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/auth/login');
+  }
+
+  // Get user's teams
+  const memberships = await prisma.teamMember.findMany({
+    where: { userId: user.id },
+    select: { teamId: true, team: { select: { name: true } } }
+  });
+
+  const teamIds = memberships.map(m => m.teamId);
+
+  // Redirect to team page if no teams
+  if (teamIds.length === 0) {
+    redirect('/team');
+  }
+
   const matches = await prisma.match.findMany({
-    take: 10,
+    where: {
+      teamId: { in: teamIds }
+    },
+    take: 20,
     orderBy: {
       gameStartMillis: 'desc'
     },
@@ -19,7 +43,8 @@ export default async function Home() {
           player: true
         }
       },
-      tags: true
+      tags: true,
+      team: true
     }
   });
 
@@ -28,12 +53,23 @@ export default async function Home() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-3xl font-bold text-gray-500">Recent Matches</h1>
         <div className="flex items-center gap-3 flex-wrap">
-          <AutoIngester />
+          <Link
+            href="/upload"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-semibold transition-colors"
+          >
+            Upload Match
+          </Link>
           <Link
             href="/stats"
             className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded font-semibold transition-colors"
           >
             View Statistics
+          </Link>
+          <Link
+            href="/team"
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded font-semibold transition-colors"
+          >
+            Teams
           </Link>
         </div>
       </div>
@@ -54,7 +90,12 @@ export default async function Home() {
               <div className="flex justify-between items-center">
                 <div>
                   <div className="text-xl font-bold text-white mb-1">{mapName}</div>
-                  <div className="text-sm text-gray-400">{date}</div>
+                  <div className="text-sm text-gray-400">
+                    {date}
+                    {memberships.length > 1 && (
+                      <span className="ml-2 text-gray-500">• {match.team.name}</span>
+                    )}
+                  </div>
                   <div className="mt-2">
                     <MatchTags matchId={match.matchId} />
                   </div>
@@ -76,11 +117,16 @@ export default async function Home() {
 
         {matches.length === 0 && (
           <div className="text-center py-12 text-gray-500 bg-gray-900 rounded-lg border border-gray-800">
-            No matches found. Place JSON files in the "matches" directory to import them.
+            <p className="mb-4">マッチデータがありません。</p>
+            <Link
+              href="/upload"
+              className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-semibold transition-colors"
+            >
+              マッチをアップロード
+            </Link>
           </div>
         )}
       </div>
     </div>
   );
 }
-

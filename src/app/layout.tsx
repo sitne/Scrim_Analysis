@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
+import { UserNav } from "@/components/UserNav";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,13 +36,14 @@ export default async function RootLayout({
       >
         <div className="min-h-screen">
           <nav className="border-b border-white/10 bg-[#0f1923]/90 backdrop-blur-md">
-            <div className="container mx-auto px-4 py-4">
+            <div className="container mx-auto px-4 py-4 flex justify-between items-center">
               <Link
                 href="/"
                 className="inline-block text-xl font-bold bg-gradient-to-r from-purple-500 to-purple-500 bg-clip-text text-transparent hover:from-purple-400 hover:to-blue-400 transition-all cursor-pointer"
               >
                 Scrim Analyzer
               </Link>
+              <UserNav />
             </div>
           </nav>
           <main className="container mx-auto px-4 py-8">

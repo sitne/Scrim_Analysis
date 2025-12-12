@@ -1,12 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
-  // Explicitly set distDir to prevent nested directory structure during build
-  distDir: '.next',
-  // Disable image optimization for Electron (no server-side optimization needed)
+  // Remove standalone output for Vercel - Vercel handles this automatically
+  // Vercel optimizes builds automatically
   images: {
-    unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+      },
+    ],
   },
 };
 

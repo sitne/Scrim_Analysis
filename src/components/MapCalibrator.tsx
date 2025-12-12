@@ -2,26 +2,38 @@
 
 import { useState, useRef, useEffect } from 'react';
 
-// Sunset (Juliett) 用のテストポイント
+// Pearl用のテストポイント
 const TEST_POINTS = [
-    { name: "A Site", x: 1000, y: 3200 },   // Aサイト設置位置
-    { name: "B Site", x: -600, y: -5850 },  // Bサイト設置位置
-    { name: "Atk Spawn", x: -6025, y: -400 },   // 攻撃側スポーン
-    { name: "Def Spawn", x: 3805, y: -1989 },  // 防衛側スポーン
-    { name: "Mid Top", x: 2000, y: -2000 },  // ミッド上部
-    { name: "Mid Tiles", x: -1800, y: 400 },    // ミッド・タイル
-    { name: "B Boba", x: 2200, y: -4800 },  // Bボバ
-    { name: "A Elbow", x: 200, y: 4200 },   // Aエルボー
+    // --- サイト設置位置 ---
+    { name: "A Site", x: 6613, y: 5569 },   // Aサイト
+    { name: "B Site", x: 5800, y: -2850 },  // Bサイト
+
+    // --- スポーン地点（端と端の確認用） ---
+    { name: "Atk Spawn", x: -550, y: -600 },   // 攻撃側スポーン
+    { name: "Def Spawn", x: 11092, y: 378 },    // 防衛側スポーン
+
+    // --- 中央エリア ---
+    { name: "Mid Plaza", x: 2750, y: -325 },   // ミッド・プラザ
+    { name: "Mid Doors", x: 4701, y: 597 },    // ミッド・ドア
+
+    // --- 特徴的なエリア ---
+    { name: "B Hall", x: 7495, y: -4954 },  // Bホール（ロングの奥）
+    { name: "A Restaurant", x: 4430, y: 2813 },   // Aレストラン
 ];
 
 // 初期設定
 const INITIAL_CONFIG = {
-    // SunsetのAPI値に近い初期値
+    // APIの値
     xMultiplier: 0.000078,
     yMultiplier: -0.000078,
-    xScalar: 0.5,
-    yScalar: 0.5,
-    rotation: -90, // 最初から回転させておく
+
+    // APIの値そのままだとズレる可能性が高いため、
+    // ツール上でスライダーを動かして「正解」を見つけてください
+    xScalar: 0.480469,
+    yScalar: 0.916016,
+
+    // Pearlは横長なので回転が必要なケースが多いです
+    rotation: 0,
 };
 
 export default function MapCalibrator() {
@@ -102,7 +114,7 @@ export default function MapCalibrator() {
                 {/* 画像パスは適宜変更してください */}
                 <img
                     ref={imgRef}
-                    src="/maps/sunset.png"
+                    src="/maps/pearl.png"
                     alt="map"
                     className="hidden"
                     onLoad={() => setConfig({ ...config })}

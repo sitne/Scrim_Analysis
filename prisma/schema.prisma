@@ -3,12 +3,45 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
+
+// ============================================
+// チーム管理
+// ============================================
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  inviteCode  String   @unique @default(cuid())
+  createdAt   DateTime @default(now())
+  
+  members     TeamMember[]
+  matches     Match[]
+}
+
+model TeamMember {
+  id       String   @id @default(cuid())
+  teamId   String
+  userId   String   // Supabase Auth user ID
+  role     String   @default("member") // "owner" or "member"
+  joinedAt DateTime @default(now())
+  
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
+// ============================================
+// マッチデータ
+// ============================================
 
 model Match {
   matchId             String   @id
+  teamId              String
   mapId               String
   gamePodId           String?
   gameLoopZone        String?
@@ -27,6 +60,7 @@ model Match {
   platformType        String?
   winningTeam         String?
   
+  team                Team     @relation(fields: [teamId], references: [id])
   players             MatchPlayer[]
   rounds              Round[]
   kills               KillEvent[]
@@ -34,6 +68,8 @@ model Match {
   tags                MatchTag[]
   
   createdAt           DateTime @default(now())
+  
+  @@index([teamId])
 }
 
 model MatchTag {
@@ -151,8 +187,8 @@ model KillEvent {
   damageItem          String?
   isSecondaryFireMode Boolean?
   
-  assistants          String? // SQLite doesn't support Json type
-  playerLocations     String? // SQLite doesn't support Json type
+  assistants          Json?
+  playerLocations     Json?
   
   match               Match    @relation(fields: [matchId], references: [matchId])
 }

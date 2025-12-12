@@ -1,28 +1,27 @@
 {
   "name": "scrim-analyzer",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Professional match analytics for VALORANT scrims",
   "author": "Scrim Analyzer Team",
   "private": true,
-  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && npm run electron:start\"",
-    "electron:start": "npx tsc -p electron/tsconfig.json && cross-env NODE_ENV=development npx electron .",
-    "electron:build": "node -e \"const fs=require('fs'); fs.rmSync('release', {recursive:true, force:true});\" && npm run build && node scripts/prepare-standalone.js && node scripts/prepare-prod-db.js && npx tsc -p electron/tsconfig.json && npx electron-builder",
-    "electron:pack": "npm run build && npx tsc -p electron/tsconfig.json && npx electron-builder --dir",
-    "electron:build-empty-matches": "node scripts/build-with-empty-matches.js"
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
     "@prisma/client": "^6.1.0",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.87.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "dotenv": "^17.2.3",
     "lucide-react": "^0.555.0",
-    "next": "16.0.5",
+    "next": "^16.0.10",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "tailwind-merge": "^3.4.0"
@@ -32,68 +31,14 @@
     "@types/node": "^20.19.25",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "concurrently": "^9.2.1",
-    "cross-env": "^10.1.0",
-    "electron": "^39.2.5",
-    "electron-builder": "^26.0.12",
     "eslint": "^9",
     "eslint-config-next": "16.0.5",
-    "png-to-ico": "^3.0.1",
     "prisma": "^6.1.0",
     "tailwindcss": "^4",
-    "ts-node": "^10.9.2",
     "tsx": "^4.20.6",
-    "typescript": "^5",
-    "wait-on": "^9.0.3"
+    "typescript": "^5"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
-  },
-  "build": {
-    "appId": "com.scrimanalyzer.app",
-    "productName": "Scrim Analyzer",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "dist-electron/**/*",
-      "public/**/*",
-      "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": ".next/standalone",
-        "to": "standalone"
-      },
-      {
-        "from": "prisma/prod/dev.db",
-        "to": "prisma/dev.db"
-      },
-      {
-        "from": "prisma/schema.prisma",
-        "to": "prisma/schema.prisma"
-      },
-      {
-        "from": "prisma/migrations",
-        "to": "prisma/migrations"
-      }
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Scrim Analyzer"
-    }
   }
 }
