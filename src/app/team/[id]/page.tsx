@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
+import { CopyButton } from '@/components/CopyButton'
 
 interface PageProps {
     params: Promise<{ id: string }>
@@ -79,12 +80,7 @@ export default async function TeamDetailPage({ params }: PageProps) {
                                 <code className="flex-1 px-4 py-2 bg-gray-900 rounded text-gray-300 font-mono text-sm">
                                     {team.inviteCode}
                                 </code>
-                                <button
-                                    onClick={() => navigator.clipboard.writeText(team.inviteCode)}
-                                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition"
-                                >
-                                    コピー
-                                </button>
+                                <CopyButton text={team.inviteCode} />
                             </div>
                             <p className="text-xs text-gray-500 mt-2">
                                 このコードを共有して、メンバーを招待できます
@@ -110,8 +106,8 @@ export default async function TeamDetailPage({ params }: PageProps) {
                                     <span className="text-gray-300">{member.userId.slice(0, 8)}...</span>
                                 </div>
                                 <span className={`text-xs px-2 py-1 rounded ${member.role === 'owner'
-                                        ? 'bg-amber-500/20 text-amber-400'
-                                        : 'bg-gray-700 text-gray-400'
+                                    ? 'bg-amber-500/20 text-amber-400'
+                                    : 'bg-gray-700 text-gray-400'
                                     }`}>
                                     {member.role === 'owner' ? 'オーナー' : 'メンバー'}
                                 </span>
