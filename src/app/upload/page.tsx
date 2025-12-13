@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 interface Team {
@@ -19,21 +19,28 @@ export default function UploadPage() {
     const [error, setError] = useState<string | null>(null)
     const [dragActive, setDragActive] = useState(false)
     const router = useRouter()
+    const searchParams = useSearchParams()
 
     useEffect(() => {
+        // Get team from URL params
+        const teamFromUrl = searchParams.get('team')
+
         // Fetch user's teams
         fetch('/api/team')
             .then(res => res.json())
             .then(data => {
                 if (data.teams) {
                     setTeams(data.teams)
-                    if (data.teams.length === 1) {
+                    // Auto-select team from URL or first team
+                    if (teamFromUrl && data.teams.some((t: Team) => t.id === teamFromUrl)) {
+                        setSelectedTeam(teamFromUrl)
+                    } else if (data.teams.length === 1) {
                         setSelectedTeam(data.teams[0].id)
                     }
                 }
             })
             .catch(console.error)
-    }, [])
+    }, [searchParams])
 
     const handleDrag = useCallback((e: React.DragEvent) => {
         e.preventDefault()
@@ -168,8 +175,8 @@ export default function UploadPage() {
 
                 <div
                     className={`border-2 border-dashed rounded-xl p-12 text-center transition ${dragActive
-                            ? 'border-blue-500 bg-blue-500/10'
-                            : 'border-gray-700 bg-gray-900'
+                        ? 'border-blue-500 bg-blue-500/10'
+                        : 'border-gray-700 bg-gray-900'
                         }`}
                     onDragEnter={handleDrag}
                     onDragLeave={handleDrag}
@@ -264,10 +271,10 @@ export default function UploadPage() {
                                 <li
                                     key={index}
                                     className={`flex items-center justify-between text-sm px-3 py-2 rounded ${result.status === 'error'
-                                            ? 'bg-red-500/10 text-red-400'
-                                            : result.status === 'skipped'
-                                                ? 'bg-yellow-500/10 text-yellow-400'
-                                                : 'bg-green-500/10 text-green-400'
+                                        ? 'bg-red-500/10 text-red-400'
+                                        : result.status === 'skipped'
+                                            ? 'bg-yellow-500/10 text-yellow-400'
+                                            : 'bg-green-500/10 text-green-400'
                                         }`}
                                 >
                                     <span className="truncate">{result.file}</span>

@@ -1,13 +1,18 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { getMapDisplayName } from '@/lib/utils';
-import { MatchTags } from '@/components/MatchTags';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { TeamSelector } from '@/components/TeamSelector';
 
 export const dynamic = 'force-dynamic';
 
-export default async function Home() {
+interface PageProps {
+  searchParams: Promise<{ team?: string }>
+}
+
+export default async function Home({ searchParams }: PageProps) {
+  const { team: teamIdParam } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -15,23 +20,30 @@ export default async function Home() {
     redirect('/auth/login');
   }
 
-  // Get user's teams (minimal query)
+  // Get user's teams
   const memberships = await prisma.teamMember.findMany({
     where: { userId: user.id },
-    select: { teamId: true, team: { select: { name: true } } }
+    select: { teamId: true, team: { select: { id: true, name: true } } }
   });
 
-  const teamIds = memberships.map(m => m.teamId);
-
   // Redirect to team page if no teams
-  if (teamIds.length === 0) {
+  if (memberships.length === 0) {
     redirect('/team');
   }
 
-  // Optimized query - only select needed fields, use count instead of full rounds
+  const teams = memberships.map(m => m.team);
+
+  // Use selected team or default to first team
+  const currentTeamId = teamIdParam && teams.some(t => t.id === teamIdParam)
+    ? teamIdParam
+    : teams[0].id;
+
+  const currentTeam = teams.find(t => t.id === currentTeamId)!;
+
+  // Get matches for the selected team only
   const matches = await prisma.match.findMany({
     where: {
-      teamId: { in: teamIds }
+      teamId: currentTeamId
     },
     take: 20,
     orderBy: {
@@ -42,7 +54,6 @@ export default async function Home() {
       mapId: true,
       gameStartMillis: true,
       winningTeam: true,
-      team: { select: { name: true } },
       tags: { select: { tagName: true } },
       _count: {
         select: {
@@ -50,7 +61,6 @@ export default async function Home() {
           rounds: true
         }
       },
-      // Get round scores efficiently
       rounds: {
         select: { winningTeam: true }
       }
@@ -60,16 +70,19 @@ export default async function Home() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-3xl font-bold text-gray-500">Recent Matches</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-3xl font-bold text-white">{currentTeam.name}</h1>
+          <TeamSelector teams={teams} currentTeamId={currentTeamId} />
+        </div>
         <div className="flex items-center gap-3 flex-wrap">
           <Link
-            href="/upload"
+            href={`/upload?team=${currentTeamId}`}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-semibold transition-colors"
           >
             Upload Match
           </Link>
           <Link
-            href="/stats"
+            href={`/stats?team=${currentTeamId}`}
             className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded font-semibold transition-colors"
           >
             View Statistics
@@ -99,12 +112,7 @@ export default async function Home() {
               <div className="flex justify-between items-center">
                 <div>
                   <div className="text-xl font-bold text-white mb-1">{mapName}</div>
-                  <div className="text-sm text-gray-400">
-                    {date}
-                    {memberships.length > 1 && (
-                      <span className="ml-2 text-gray-500">• {match.team?.name}</span>
-                    )}
-                  </div>
+                  <div className="text-sm text-gray-400">{date}</div>
                   {match.tags.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
                       {match.tags.map((tag) => (
@@ -134,7 +142,7 @@ export default async function Home() {
           <div className="text-center py-12 text-gray-500 bg-gray-900 rounded-lg border border-gray-800">
             <p className="mb-4">マッチデータがありません。</p>
             <Link
-              href="/upload"
+              href={`/upload?team=${currentTeamId}`}
               className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-semibold transition-colors"
             >
               マッチをアップロード
