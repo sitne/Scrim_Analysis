@@ -15,7 +15,7 @@ export default async function Home() {
     redirect('/auth/login');
   }
 
-  // Get user's teams
+  // Get user's teams (minimal query)
   const memberships = await prisma.teamMember.findMany({
     where: { userId: user.id },
     select: { teamId: true, team: { select: { name: true } } }
@@ -28,6 +28,7 @@ export default async function Home() {
     redirect('/team');
   }
 
+  // Optimized query - only select needed fields, use count instead of full rounds
   const matches = await prisma.match.findMany({
     where: {
       teamId: { in: teamIds }
@@ -36,15 +37,23 @@ export default async function Home() {
     orderBy: {
       gameStartMillis: 'desc'
     },
-    include: {
-      rounds: true,
-      players: {
-        include: {
-          player: true
+    select: {
+      matchId: true,
+      mapId: true,
+      gameStartMillis: true,
+      winningTeam: true,
+      team: { select: { name: true } },
+      tags: { select: { tagName: true } },
+      _count: {
+        select: {
+          players: true,
+          rounds: true
         }
       },
-      tags: true,
-      team: true
+      // Get round scores efficiently
+      rounds: {
+        select: { winningTeam: true }
+      }
     }
   });
 
@@ -96,9 +105,15 @@ export default async function Home() {
                       <span className="ml-2 text-gray-500">• {match.team?.name}</span>
                     )}
                   </div>
-                  <div className="mt-2">
-                    <MatchTags matchId={match.matchId} />
-                  </div>
+                  {match.tags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {match.tags.map((tag) => (
+                        <span key={tag.tagName} className="px-2 py-0.5 bg-gray-700 text-gray-300 text-xs rounded">
+                          {tag.tagName}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-white">
@@ -107,7 +122,7 @@ export default async function Home() {
                     <span className={blueScore > redScore ? 'text-blue-400' : ''}>{blueScore}</span>
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {match.players.length} Players
+                    {match._count.players} Players
                   </div>
                 </div>
               </div>

@@ -17,76 +17,60 @@ export async function importMatchData(matchData: any, teamId: string) {
     });
 
     if (existingMatch) {
-        console.log(`Match ${matchId} already exists. Updating (overwriting)...`);
-
-        // Manual cascade delete since schema might not have Cascade on all relations
-        await prisma.$transaction([
-            prisma.roundPlayerStats.deleteMany({ where: { matchId } }),
-            prisma.killEvent.deleteMany({ where: { matchId } }),
-            prisma.damageEvent.deleteMany({ where: { matchId } }),
-            prisma.matchTag.deleteMany({ where: { matchId } }),
-            prisma.round.deleteMany({ where: { matchId } }),
-            prisma.matchPlayer.deleteMany({ where: { matchId } }),
-            prisma.match.delete({ where: { matchId } }),
-        ]);
-        console.log(`Deleted existing match ${matchId}`);
+        console.log(`Match ${matchId} already exists. Skipping...`);
+        return { status: 'skipped', matchId, reason: 'already exists' };
     }
 
-    // 1. Create Match
-    const matchInfo = matchData.matchInfo;
-    await prisma.match.create({
-        data: {
-            matchId: matchInfo.matchId,
-            teamId: teamId, // チームIDを追加
-            mapId: matchInfo.mapId,
-            gamePodId: matchInfo.gamePodId,
-            gameLoopZone: matchInfo.gameLoopZone,
-            gameServerAddress: matchInfo.gameServerAddress,
-            gameVersion: matchInfo.gameVersion,
-            gameLengthMillis: matchInfo.gameLengthMillis,
-            gameStartMillis: matchInfo.gameStartMillis,
-            provisioningFlowId: matchInfo.provisioningFlowID, // Note: ID vs Id casing
-            isCompleted: matchInfo.isCompleted,
-            customGameName: matchInfo.customGameName,
-            queueId: matchInfo.queueID,
-            gameMode: matchInfo.gameMode,
-            isRanked: matchInfo.isRanked,
-            seasonId: matchInfo.seasonId,
-            completionState: matchInfo.completionState,
-            platformType: matchInfo.platformType,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            winningTeam: (() => {
-                if (!matchData.roundResults) return null;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const redWins = matchData.roundResults.filter((r: any) => r.winningTeam === 'Red').length;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const blueWins = matchData.roundResults.filter((r: any) => r.winningTeam === 'Blue').length;
-                if (redWins > blueWins) return 'Red';
-                if (blueWins > redWins) return 'Blue';
-                return 'Draw';
-            })(),
-        },
-    });
-
-    // 2. Create Players and MatchPlayer stats
-    for (const player of matchData.players) {
-        // Upsert Player (might exist from other matches in future)
-        await prisma.player.upsert({
-            where: { puuid: player.subject },
-            update: {
-                gameName: player.gameName,
-                tagLine: player.tagLine,
-            },
-            create: {
-                puuid: player.subject,
-                gameName: player.gameName,
-                tagLine: player.tagLine,
+    // Use transaction for all operations
+    await prisma.$transaction(async (tx) => {
+        // 1. Create Match
+        const matchInfo = matchData.matchInfo;
+        await tx.match.create({
+            data: {
+                matchId: matchInfo.matchId,
+                teamId: teamId,
+                mapId: matchInfo.mapId,
+                gamePodId: matchInfo.gamePodId,
+                gameLoopZone: matchInfo.gameLoopZone,
+                gameServerAddress: matchInfo.gameServerAddress,
+                gameVersion: matchInfo.gameVersion,
+                gameLengthMillis: matchInfo.gameLengthMillis,
+                gameStartMillis: matchInfo.gameStartMillis,
+                provisioningFlowId: matchInfo.provisioningFlowID,
+                isCompleted: matchInfo.isCompleted,
+                customGameName: matchInfo.customGameName,
+                queueId: matchInfo.queueID,
+                gameMode: matchInfo.gameMode,
+                isRanked: matchInfo.isRanked,
+                seasonId: matchInfo.seasonId,
+                completionState: matchInfo.completionState,
+                platformType: matchInfo.platformType,
+                winningTeam: (() => {
+                    if (!matchData.roundResults) return null;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const redWins = matchData.roundResults.filter((r: any) => r.winningTeam === 'Red').length;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const blueWins = matchData.roundResults.filter((r: any) => r.winningTeam === 'Blue').length;
+                    if (redWins > blueWins) return 'Red';
+                    if (blueWins > redWins) return 'Blue';
+                    return 'Draw';
+                })(),
             },
         });
 
-        // Create MatchPlayer
-        await prisma.matchPlayer.create({
-            data: {
+        // 2. Batch upsert Players
+        const playerUpserts = matchData.players.map((player: any) =>
+            tx.player.upsert({
+                where: { puuid: player.subject },
+                update: { gameName: player.gameName, tagLine: player.tagLine },
+                create: { puuid: player.subject, gameName: player.gameName, tagLine: player.tagLine },
+            })
+        );
+        await Promise.all(playerUpserts);
+
+        // 3. Batch create MatchPlayers
+        await tx.matchPlayer.createMany({
+            data: matchData.players.map((player: any) => ({
                 matchId: matchInfo.matchId,
                 puuid: player.subject,
                 teamId: player.teamId,
@@ -104,16 +88,14 @@ export async function importMatchData(matchData: any, teamId: string) {
                 ability1Casts: player.stats?.abilityCasts?.ability1Casts,
                 ability2Casts: player.stats?.abilityCasts?.ability2Casts,
                 ultimateCasts: player.stats?.abilityCasts?.ultimateCasts,
-            },
+            })),
         });
-    }
 
-    // 3. Create Rounds and RoundPlayerStats
-    if (matchData.roundResults) {
-        for (const round of matchData.roundResults) {
-            // Create Round
-            await prisma.round.create({
-                data: {
+        // 4. Create Rounds, RoundPlayerStats, KillEvents, DamageEvents in batches
+        if (matchData.roundResults) {
+            // Batch create Rounds
+            await tx.round.createMany({
+                data: matchData.roundResults.map((round: any) => ({
                     matchId: matchInfo.matchId,
                     roundNum: round.roundNum,
                     roundResult: round.roundResult,
@@ -128,79 +110,73 @@ export async function importMatchData(matchData: any, teamId: string) {
                     defuseRoundTime: round.defuseRoundTime,
                     defuseLocationX: round.defuseLocation?.x,
                     defuseLocationY: round.defuseLocation?.y,
-                },
+                })),
             });
 
-            // Create RoundPlayerStats
-            if (round.playerStats) {
-                // Pre-calculate all kills in this round for death/assist counting
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            // Collect all stats for batch insert
+            const roundPlayerStatsData: any[] = [];
+            const killEventsData: any[] = [];
+            const damageEventsData: any[] = [];
+
+            for (const round of matchData.roundResults) {
+                if (!round.playerStats) continue;
+
                 const allRoundKills = round.playerStats.flatMap((ps: any) => ps.kills || []);
 
                 for (const pStats of round.playerStats) {
-                    // Calculate deaths: count how many times this player was the victim
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const deaths = allRoundKills.filter((k: any) => k.victim === pStats.subject).length;
-
-                    // Calculate assists: count how many times this player was an assistant
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const assists = allRoundKills.filter((k: any) => {
                         if (!k.assistants || !Array.isArray(k.assistants)) return false;
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         return k.assistants.some((a: any) => {
-                            // Handle both string IDs and object structures
                             if (typeof a === 'string') return a === pStats.subject;
                             return a === pStats.subject || a.assistantId === pStats.subject || a.subject === pStats.subject;
                         });
                     }).length;
 
-                    await prisma.roundPlayerStats.create({
-                        data: {
-                            matchId: matchInfo.matchId,
-                            roundNum: round.roundNum,
-                            puuid: pStats.subject,
-                            score: pStats.score,
-                            kills: pStats.kills.length, // Count kills in this round
-                            deaths: deaths,
-                            assists: assists,
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            damage: pStats.damage.reduce((acc: number, curr: any) => acc + curr.damage, 0),
-                            loadoutValue: pStats.economy?.loadoutValue,
-                            weapon: pStats.economy?.weapon,
-                            armor: pStats.economy?.armor,
-                            remainingMoney: pStats.economy?.remaining,
-                            spentMoney: pStats.economy?.spent,
-                            wasAfk: pStats.wasAfk,
-                            wasPenalized: pStats.wasPenalized,
-                            stayedInSpawn: pStats.stayedInSpawn,
-                        },
+                    roundPlayerStatsData.push({
+                        matchId: matchInfo.matchId,
+                        roundNum: round.roundNum,
+                        puuid: pStats.subject,
+                        score: pStats.score,
+                        kills: pStats.kills?.length || 0,
+                        deaths,
+                        assists,
+                        damage: pStats.damage?.reduce((acc: number, curr: any) => acc + curr.damage, 0) || 0,
+                        loadoutValue: pStats.economy?.loadoutValue,
+                        weapon: pStats.economy?.weapon,
+                        armor: pStats.economy?.armor,
+                        remainingMoney: pStats.economy?.remaining,
+                        spentMoney: pStats.economy?.spent,
+                        wasAfk: pStats.wasAfk,
+                        wasPenalized: pStats.wasPenalized,
+                        stayedInSpawn: pStats.stayedInSpawn,
                     });
 
-                    // 4. Create KillEvents (from playerStats kills list)
-                    for (const kill of pStats.kills) {
-                        await prisma.killEvent.create({
-                            data: {
+                    // Collect kill events
+                    if (pStats.kills) {
+                        for (const kill of pStats.kills) {
+                            killEventsData.push({
                                 matchId: matchInfo.matchId,
                                 roundNum: round.roundNum,
                                 gameTime: kill.gameTime,
                                 roundTime: kill.roundTime,
                                 killerId: kill.killer,
                                 victimId: kill.victim,
-                                victimLocationX: kill.victimLocation.x,
-                                victimLocationY: kill.victimLocation.y,
-                                damageType: kill.finishingDamage.damageType,
-                                damageItem: kill.finishingDamage.damageItem,
-                                isSecondaryFireMode: kill.finishingDamage.isSecondaryFireMode,
-                                assistants: kill.assistants, // PostgreSQL supports Json
-                                playerLocations: kill.playerLocations, // PostgreSQL supports Json
-                            },
-                        });
+                                victimLocationX: kill.victimLocation?.x,
+                                victimLocationY: kill.victimLocation?.y,
+                                damageType: kill.finishingDamage?.damageType,
+                                damageItem: kill.finishingDamage?.damageItem,
+                                isSecondaryFireMode: kill.finishingDamage?.isSecondaryFireMode,
+                                assistants: kill.assistants,
+                                playerLocations: kill.playerLocations,
+                            });
+                        }
                     }
 
-                    // 5. Create DamageEvents
-                    for (const dmg of pStats.damage) {
-                        await prisma.damageEvent.create({
-                            data: {
+                    // Collect damage events
+                    if (pStats.damage) {
+                        for (const dmg of pStats.damage) {
+                            damageEventsData.push({
                                 matchId: matchInfo.matchId,
                                 roundNum: round.roundNum,
                                 attackerId: pStats.subject,
@@ -209,13 +185,25 @@ export async function importMatchData(matchData: any, teamId: string) {
                                 legshots: dmg.legshots,
                                 bodyshots: dmg.bodyshots,
                                 headshots: dmg.headshots,
-                            }
-                        });
+                            });
+                        }
                     }
                 }
             }
+
+            // Batch insert all collected data
+            if (roundPlayerStatsData.length > 0) {
+                await tx.roundPlayerStats.createMany({ data: roundPlayerStatsData });
+            }
+            if (killEventsData.length > 0) {
+                await tx.killEvent.createMany({ data: killEventsData });
+            }
+            if (damageEventsData.length > 0) {
+                await tx.damageEvent.createMany({ data: damageEventsData });
+            }
         }
-    }
+    });
+
     console.log(`Successfully imported match: ${matchId}`);
     return { status: 'imported', matchId };
 }
