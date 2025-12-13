@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -10,7 +10,7 @@ interface Team {
     role: string
 }
 
-export default function UploadPage() {
+function UploadContent() {
     const [files, setFiles] = useState<File[]>([])
     const [uploading, setUploading] = useState(false)
     const [results, setResults] = useState<{ file: string; status: string; error?: string }[]>([])
@@ -18,6 +18,7 @@ export default function UploadPage() {
     const [selectedTeam, setSelectedTeam] = useState<string>('')
     const [error, setError] = useState<string | null>(null)
     const [dragActive, setDragActive] = useState(false)
+    const [loading, setLoading] = useState(true)
     const router = useRouter()
     const searchParams = useSearchParams()
 
@@ -40,6 +41,7 @@ export default function UploadPage() {
                 }
             })
             .catch(console.error)
+            .finally(() => setLoading(false))
     }, [searchParams])
 
     const handleDrag = useCallback((e: React.DragEvent) => {
@@ -122,6 +124,14 @@ export default function UploadPage() {
 
         // Refresh after upload
         router.refresh()
+    }
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-950 p-8 flex items-center justify-center">
+                <div className="text-gray-400">読み込み中...</div>
+            </div>
+        )
     }
 
     if (teams.length === 0) {
@@ -292,5 +302,17 @@ export default function UploadPage() {
                 )}
             </div>
         </div>
+    )
+}
+
+export default function UploadPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gray-950 p-8 flex items-center justify-center">
+                <div className="text-gray-400">読み込み中...</div>
+            </div>
+        }>
+            <UploadContent />
+        </Suspense>
     )
 }
