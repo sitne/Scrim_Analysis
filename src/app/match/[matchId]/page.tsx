@@ -5,6 +5,8 @@ import { RoundHistoryWithDetails } from '@/components/RoundHistoryWithDetails';
 import { getAgentName, getAgentIconPath, getMapDisplayName } from '@/lib/utils';
 import { Prisma } from '@prisma/client';
 import { MatchTags } from '@/components/MatchTags';
+import { DeleteButton } from '@/components/DeleteButton';
+import Link from 'next/link';
 
 // Define precise type for Match with included relations
 type MatchDetailData = Prisma.MatchGetPayload<{
@@ -171,6 +173,13 @@ export default async function MatchPage(props: MatchPageProps) {
 
     return (
         <div className="space-y-8">
+            {/* Back Link */}
+            {match.teamId && (
+                <Link href={`/team/${match.teamId}`} className="text-gray-400 hover:text-white transition">
+                    ← チームに戻る
+                </Link>
+            )}
+
             {/* Match Header */}
             <div className="bg-gradient-to-r from-gray-900 to-gray-800 border border-gray-700 rounded-lg p-8">
                 <div className="flex justify-between items-center">
@@ -196,6 +205,15 @@ export default async function MatchPage(props: MatchPageProps) {
                         <p className="text-sm text-gray-400 mt-2">
                             勝者: {redRounds > blueRounds ? 'Red Team' : 'Blue Team'}
                         </p>
+                        <div className="mt-4">
+                            <DeleteButton
+                                endpoint={`/api/match/${match.matchId}`}
+                                redirectTo={match.teamId ? `/team/${match.teamId}` : '/'}
+                                buttonText="マッチを削除"
+                                confirmMessage="本当に削除しますか？"
+                                className="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 text-sm rounded transition"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>

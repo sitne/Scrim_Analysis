@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { CopyButton } from '@/components/CopyButton'
+import { DeleteButton } from '@/components/DeleteButton'
 
 interface PageProps {
     params: Promise<{ id: string }>
@@ -115,6 +116,37 @@ export default async function TeamSettingsPage({ params }: PageProps) {
                         <div className="text-sm text-gray-400">メンバー数</div>
                     </div>
                 </div>
+            </div>
+
+            {/* Danger Zone */}
+            <div className="bg-gray-900 rounded-xl p-6 border border-red-900/50">
+                <h2 className="text-lg font-semibold text-red-400 mb-4">危険な操作</h2>
+
+                {isOwner ? (
+                    <div>
+                        <p className="text-sm text-gray-400 mb-4">
+                            チームを削除すると、すべてのマッチデータとメンバー情報が削除されます。この操作は取り消せません。
+                        </p>
+                        <DeleteButton
+                            endpoint={`/api/team/${id}`}
+                            redirectTo="/team"
+                            buttonText="チームを削除"
+                            confirmMessage="本当に削除しますか？"
+                        />
+                    </div>
+                ) : (
+                    <div>
+                        <p className="text-sm text-gray-400 mb-4">
+                            チームを脱退すると、このチームのマッチデータにアクセスできなくなります。
+                        </p>
+                        <DeleteButton
+                            endpoint={`/api/team/${id}/leave`}
+                            redirectTo="/team"
+                            buttonText="チームを脱退"
+                            confirmMessage="本当に脱退しますか？"
+                        />
+                    </div>
+                )}
             </div>
         </div>
     )
