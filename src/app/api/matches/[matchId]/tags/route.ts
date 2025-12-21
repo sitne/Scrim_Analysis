@@ -1,5 +1,27 @@
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+
+// Helper to verify user can access this match
+async function verifyMatchAccess(matchId: string, userId: string): Promise<boolean> {
+    const match = await prisma.match.findUnique({
+        where: { matchId },
+        select: { teamId: true }
+    });
+
+    if (!match || !match.teamId) return false;
+
+    const membership = await prisma.teamMember.findUnique({
+        where: {
+            teamId_userId: {
+                teamId: match.teamId,
+                userId
+            }
+        }
+    });
+
+    return !!membership;
+}
 
 export async function GET(
     request: NextRequest,
@@ -7,6 +29,18 @@ export async function GET(
 ) {
     const params = await props.params;
     const { matchId } = params;
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    }
+
+    const hasAccess = await verifyMatchAccess(matchId, user.id);
+    if (!hasAccess) {
+        return NextResponse.json({ error: 'アクセス権がありません' }, { status: 403 });
+    }
 
     try {
         const tags = await prisma.matchTag.findMany({
@@ -27,6 +61,18 @@ export async function POST(
 ) {
     const params = await props.params;
     const { matchId } = params;
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    }
+
+    const hasAccess = await verifyMatchAccess(matchId, user.id);
+    if (!hasAccess) {
+        return NextResponse.json({ error: 'アクセス権がありません' }, { status: 403 });
+    }
 
     try {
         const body = await request.json();
@@ -67,6 +113,18 @@ export async function DELETE(
 
     if (!tagName) {
         return NextResponse.json({ error: 'Tag name is required' }, { status: 400 });
+    }
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    }
+
+    const hasAccess = await verifyMatchAccess(matchId, user.id);
+    if (!hasAccess) {
+        return NextResponse.json({ error: 'アクセス権がありません' }, { status: 403 });
     }
 
     try {

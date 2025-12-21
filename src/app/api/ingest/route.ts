@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { importMatch } from '@/lib/importer';
+import { createClient } from '@/lib/supabase/server';
 import fs from 'fs';
 import path from 'path';
 
@@ -15,6 +16,18 @@ function getMatchesDir(): string {
 
 export async function POST() {
     try {
+        // Only allow in development mode for security
+        if (process.env.NODE_ENV === 'production') {
+            return NextResponse.json({ error: 'This endpoint is disabled in production' }, { status: 403 });
+        }
+
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+        }
+
         const matchesDir = getMatchesDir();
 
         // Create directory if it doesn't exist
@@ -67,6 +80,11 @@ export async function POST() {
 // GET endpoint to check status
 export async function GET() {
     try {
+        // Only allow in development mode for security
+        if (process.env.NODE_ENV === 'production') {
+            return NextResponse.json({ error: 'This endpoint is disabled in production' }, { status: 403 });
+        }
+
         const matchesDir = getMatchesDir();
 
         if (!fs.existsSync(matchesDir)) {
