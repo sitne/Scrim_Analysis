@@ -124,7 +124,12 @@ export default function TeamUploadPage({ params }: PageProps) {
                 </Link>
             </div>
 
-            <h1 className="text-3xl font-bold text-white">マッチデータアップロード</h1>
+            <div>
+                <h1 className="text-3xl font-bold text-white">マッチデータアップロード</h1>
+                <p className="text-gray-400 text-sm mt-2">
+                    データ取得用ツール: <a href="/scrim-log.zip" download className="text-blue-400 hover:text-blue-300 hover:underline">scrim-log.zip</a>
+                </p>
+            </div>
 
             <div
                 className={`border-2 border-dashed rounded-xl p-12 text-center transition ${dragActive
