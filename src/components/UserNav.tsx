@@ -12,14 +12,27 @@ export function UserNav() {
     const supabase = createClient()
 
     useEffect(() => {
-        supabase.auth.getUser().then(({ data: { user } }) => {
+        const getUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
             setUser(user)
             setLoading(false)
+        }
+        getUser()
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null)
+            setLoading(false)
         })
-    }, [supabase.auth])
+
+        return () => {
+            subscription.unsubscribe()
+        }
+    }, [supabase])
 
     const handleLogout = async () => {
+        setLoading(true)
         await supabase.auth.signOut()
+        setUser(null)
         router.push('/auth/login')
         router.refresh()
     }
@@ -32,12 +45,27 @@ export function UserNav() {
         return null
     }
 
+    const avatarUrl = user.user_metadata?.avatar_url
+    const initial = user.email ? user.email[0].toUpperCase() : '?'
+
     return (
         <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-400">{user.email}</span>
+            <div className="flex items-center gap-3">
+                {avatarUrl ? (
+                    <img
+                        src={avatarUrl}
+                        alt="User Avatar"
+                        className="w-9 h-9 rounded-full border border-gray-700"
+                    />
+                ) : (
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold border border-gray-700">
+                        {initial}
+                    </div>
+                )}
+            </div>
             <button
                 onClick={handleLogout}
-                className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition"
+                className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition"
             >
                 ログアウト
             </button>

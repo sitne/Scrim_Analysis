@@ -43,7 +43,7 @@ export default function CreateTeamPage() {
             <div className="w-full max-w-md">
                 <div className="bg-gray-900 rounded-xl shadow-2xl p-8 border border-gray-800">
                     <div className="mb-6">
-                        <Link href="/team" className="text-gray-400 hover:text-white text-sm transition">
+                        <Link href="/team" className="inline-flex items-center px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
                             ← チーム管理に戻る
                         </Link>
                     </div>

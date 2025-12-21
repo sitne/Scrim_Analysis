@@ -111,7 +111,7 @@ export default async function MatchPage(props: MatchPageProps) {
         <div className="space-y-8">
             {/* Back Link */}
             {match.teamId && (
-                <Link href={`/team/${match.teamId}`} className="text-gray-400 hover:text-white transition">
+                <Link href={`/team/${match.teamId}`} className="inline-flex items-center px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
                     ← チームに戻る
                 </Link>
             )}

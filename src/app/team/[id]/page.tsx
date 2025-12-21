@@ -76,19 +76,19 @@ export default async function TeamHomePage({ params }: PageProps) {
                         href={`/team/${id}/upload`}
                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-semibold transition-colors"
                     >
-                        Upload Match
+                        マッチをアップロード
                     </Link>
                     <Link
                         href={`/team/${id}/stats`}
                         className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded font-semibold transition-colors"
                     >
-                        View Statistics
+                        統計を見る
                     </Link>
                     <Link
                         href={`/team/${id}/settings`}
                         className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded font-semibold transition-colors"
                     >
-                        Settings
+                        設定
                     </Link>
                 </div>
             </div>
@@ -128,7 +128,7 @@ export default async function TeamHomePage({ params }: PageProps) {
                                         <span className={blueScore > redScore ? 'text-blue-400' : ''}>{blueScore}</span>
                                     </div>
                                     <div className="text-xs text-gray-500 mt-1">
-                                        {match._count.players} Players
+                                        {match._count.players} プレイヤー
                                     </div>
                                 </div>
                             </div>

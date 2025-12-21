@@ -50,7 +50,7 @@ export default async function TeamSettingsPage({ params }: PageProps) {
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-4">
-                <Link href={`/team/${id}`} className="text-gray-400 hover:text-white transition">
+                <Link href={`/team/${id}`} className="inline-flex items-center px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
                     ← {team.name}
                 </Link>
             </div>
