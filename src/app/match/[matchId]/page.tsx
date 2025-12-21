@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { MatchHeatmap } from '@/components/MatchHeatmap';
 import { RoundHistoryWithDetails } from '@/components/RoundHistoryWithDetails';
 import { getAgentName, getAgentIconPath, getMapDisplayName } from '@/lib/utils';
@@ -7,6 +7,15 @@ import { Prisma } from '@prisma/client';
 import { MatchTags } from '@/components/MatchTags';
 import { DeleteButton } from '@/components/DeleteButton';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/server';
+import {
+    calculateACS,
+    calculateADR,
+    calculateKD,
+    calculateHS,
+    calculateKAST,
+    calculateFKFD
+} from '@/lib/stats';
 
 // Define precise type for Match with included relations
 type MatchDetailData = Prisma.MatchGetPayload<{
@@ -34,6 +43,12 @@ interface MatchPageProps {
 
 export default async function MatchPage(props: MatchPageProps) {
     const params = await props.params;
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        redirect('/auth/login');
+    }
 
     const match = await prisma.match.findUnique({
         where: { matchId: params.matchId },
@@ -58,6 +73,25 @@ export default async function MatchPage(props: MatchPageProps) {
         notFound();
     }
 
+    // Security Check: Verify user belongs to the team that owns this match
+    if (match.teamId) {
+        const membership = await prisma.teamMember.findUnique({
+            where: {
+                teamId_userId: {
+                    teamId: match.teamId,
+                    userId: user.id
+                }
+            }
+        });
+
+        if (!membership) {
+            notFound(); // Or redirect to error page
+        }
+    } else {
+        // If match has no team, we strictly check team.
+        notFound();
+    }
+
     // Calculate team scores
     const redRounds = match.rounds.filter(r => r.winningTeam === 'Red').length;
     const blueRounds = match.rounds.filter(r => r.winningTeam === 'Blue').length;
@@ -66,109 +100,11 @@ export default async function MatchPage(props: MatchPageProps) {
     const redTeam = match.players.filter(p => p.teamId === 'Red');
     const blueTeam = match.players.filter(p => p.teamId === 'Blue');
 
-    // Calculate advanced stats
-    const calculateACS = (score: number, rounds: number) => {
-        return rounds > 0 ? Math.round(score / rounds) : 0;
-    };
-
-    const calculateADR = (matchPlayer: MatchDetailData['players'][number], totalRounds: number) => {
-        // Calculate from roundStats
-        const totalDamage = match.rounds.reduce((sum, round) => {
-            const playerRoundStat = round.playerStats.find(ps => ps.puuid === matchPlayer.puuid);
-            return sum + (playerRoundStat?.damage || 0);
-        }, 0);
-        return totalRounds > 0 ? Math.round(totalDamage / totalRounds) : 0;
-    };
-
-    const calculateKD = (kills: number, deaths: number) => {
-        return deaths > 0 ? (kills / deaths).toFixed(2) : kills.toFixed(2);
-    };
-
-    const calculateHS = (puuid: string) => {
-        const playerDamageEvents = match.damageEvents.filter(de => de.attackerId === puuid);
-        let totalShots = 0;
-        let headshots = 0;
-
-        playerDamageEvents.forEach(de => {
-            totalShots += ((de.legshots || 0) + (de.bodyshots || 0) + (de.headshots || 0));
-            headshots += (de.headshots || 0);
-        });
-
-        return totalShots > 0 ? Math.round((headshots / totalShots) * 100) : 0;
-    };
-
-    const calculateKAST = (puuid: string, totalRounds: number) => {
-        if (totalRounds === 0) return 0;
-
-        let kastRounds = 0;
-
-        match.rounds.forEach(round => {
-            const pStats = round.playerStats.find(ps => ps.puuid === puuid);
-            if (!pStats) return;
-
-            // K: Kill - Did they get a kill?
-            const gotKill = (pStats.kills || 0) > 0;
-
-            // A: Assist - Did they get an assist?
-            const gotAssist = match.kills.some(ke => {
-                const assistants = typeof ke.assistants === 'string' ? JSON.parse(ke.assistants) : (ke.assistants || []);
-                return ke.roundNum === round.roundNum && assistants.includes(puuid);
-            });
-
-            // S: Survive - Did they survive?
-            const died = match.kills.some(ke =>
-                ke.roundNum === round.roundNum && ke.victimId === puuid
-            );
-
-            // T: Trade - (Simplified)
-            let traded = false;
-            if (died) {
-                const deathEvent = match.kills.find(ke =>
-                    ke.roundNum === round.roundNum && ke.victimId === puuid
-                );
-                if (deathEvent) {
-                    const killerId = deathEvent.killerId;
-                    const killerDeath = match.kills.find(ke =>
-                        ke.roundNum === round.roundNum &&
-                        ke.victimId === killerId &&
-                        ke.roundTime !== null &&
-                        deathEvent.roundTime !== null &&
-                        ke.roundTime > deathEvent.roundTime &&
-                        ke.roundTime <= deathEvent.roundTime + 3000 // 3 seconds trade window
-                    );
-                    if (killerDeath) traded = true;
-                }
-            }
-
-            if (gotKill || gotAssist || !died || traded) {
-                kastRounds++;
-            }
-        });
-
-        return Math.round((kastRounds / totalRounds) * 100);
-    };
-
-    const calculateFKFD = (puuid: string) => {
-        let fk = 0;
-        let fd = 0;
-
-        match.rounds.forEach(round => {
-            const roundKills = match.kills
-                .filter(k => k.roundNum === round.roundNum)
-                .sort((a, b) => (a.roundTime || 0) - (b.roundTime || 0));
-
-            if (roundKills.length > 0) {
-                if (roundKills[0].killerId === puuid) fk++;
-                if (roundKills[0].victimId === puuid) fd++;
-            }
-        });
-
-        return { fk, fd };
-    };
-
     const mapName = getMapDisplayName(match.mapId);
-    const gameStartDate = match.gameStartMillis
-        ? new Date(Number(match.gameStartMillis))
+    // Convert BigInt to Number for safe serialization/usage
+    const gameStartMillis = Number(match.gameStartMillis || 0);
+    const gameStartDate = gameStartMillis
+        ? new Date(gameStartMillis)
         : new Date();
 
     return (
@@ -241,7 +177,7 @@ export default async function MatchPage(props: MatchPageProps) {
                             </thead>
                             <tbody className="divide-y divide-gray-800">
                                 {redTeam.sort((a, b) => (b.score || 0) - (a.score || 0)).map(p => {
-                                    const { fk, fd } = calculateFKFD(p.puuid);
+                                    const { fk, fd } = calculateFKFD(match as any, p.puuid);
                                     return (
                                         <tr key={p.puuid} className="hover:bg-gray-800/50 transition-colors">
                                             <td className="px-4 py-3 text-white">
@@ -270,15 +206,15 @@ export default async function MatchPage(props: MatchPageProps) {
                                                 {calculateKD(p.kills || 0, p.deaths || 1)}
                                             </td>
                                             <td className="px-4 py-3 text-center font-mono text-white">
-                                                {calculateADR(p, match.rounds.length)}
+                                                {calculateADR(match as any, p.puuid, match.rounds.length)}
                                             </td>
                                             <td className="px-4 py-3 text-center font-mono text-green-400">{fk}</td>
                                             <td className="px-4 py-3 text-center font-mono text-red-400">{fd}</td>
                                             <td className="px-4 py-3 text-center font-mono text-white">
-                                                {calculateHS(p.puuid)}%
+                                                {calculateHS(match as any, p.puuid)}%
                                             </td>
                                             <td className="px-4 py-3 text-center font-mono text-white">
-                                                {calculateKAST(p.puuid, match.rounds.length)}%
+                                                {calculateKAST(match as any, p.puuid, match.rounds.length)}%
                                             </td>
                                         </tr>
                                     );
@@ -312,7 +248,7 @@ export default async function MatchPage(props: MatchPageProps) {
                             </thead>
                             <tbody className="divide-y divide-gray-800">
                                 {blueTeam.sort((a, b) => (b.score || 0) - (a.score || 0)).map(p => {
-                                    const { fk, fd } = calculateFKFD(p.puuid);
+                                    const { fk, fd } = calculateFKFD(match as any, p.puuid);
                                     return (
                                         <tr key={p.puuid} className="hover:bg-gray-800/50 transition-colors">
                                             <td className="px-4 py-3 text-white">
@@ -341,15 +277,15 @@ export default async function MatchPage(props: MatchPageProps) {
                                                 {calculateKD(p.kills || 0, p.deaths || 1)}
                                             </td>
                                             <td className="px-4 py-3 text-center font-mono text-white">
-                                                {calculateADR(p, match.rounds.length)}
+                                                {calculateADR(match as any, p.puuid, match.rounds.length)}
                                             </td>
                                             <td className="px-4 py-3 text-center font-mono text-green-400">{fk}</td>
                                             <td className="px-4 py-3 text-center font-mono text-red-400">{fd}</td>
                                             <td className="px-4 py-3 text-center font-mono text-white">
-                                                {calculateHS(p.puuid)}%
+                                                {calculateHS(match as any, p.puuid)}%
                                             </td>
                                             <td className="px-4 py-3 text-center font-mono text-white">
-                                                {calculateKAST(p.puuid, match.rounds.length)}%
+                                                {calculateKAST(match as any, p.puuid, match.rounds.length)}%
                                             </td>
                                         </tr>
                                     );

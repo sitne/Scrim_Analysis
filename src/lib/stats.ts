@@ -5,7 +5,11 @@ import { getMapDisplayName, getAgentName, getAgentRole } from '@/lib/utils';
 // Define the Match type with included relations
 export type MatchWithDetails = Prisma.MatchGetPayload<{
     include: {
-        rounds: true;
+        rounds: {
+            include: {
+                playerStats: true;
+            };
+        };
         players: {
             include: {
                 player: {
@@ -16,6 +20,7 @@ export type MatchWithDetails = Prisma.MatchGetPayload<{
             };
         };
         kills: true;
+        damageEvents: true;
     };
 }>;
 
@@ -391,3 +396,102 @@ export function calculateStats(matches: MatchWithDetails[], filterPlayers: strin
         compositionStats
     };
 }
+
+// Helper functions for match stats
+export const calculateACS = (score: number, rounds: number) => {
+    return rounds > 0 ? Math.round(score / rounds) : 0;
+};
+
+export const calculateKD = (kills: number, deaths: number) => {
+    return deaths > 0 ? (kills / deaths).toFixed(2) : kills.toFixed(2);
+};
+
+export const calculateADR = (match: MatchWithDetails, puuid: string, totalRounds: number) => {
+    const totalDamage = match.rounds.reduce((sum, round) => {
+        const playerRoundStat = round.playerStats.find(ps => ps.puuid === puuid);
+        return sum + (playerRoundStat?.damage || 0);
+    }, 0);
+    return totalRounds > 0 ? Math.round(totalDamage / totalRounds) : 0;
+};
+
+export const calculateHS = (match: MatchWithDetails, puuid: string) => {
+    const playerDamageEvents = match.damageEvents.filter(de => de.attackerId === puuid);
+    let totalShots = 0;
+    let headshots = 0;
+
+    playerDamageEvents.forEach(de => {
+        totalShots += ((de.legshots || 0) + (de.bodyshots || 0) + (de.headshots || 0));
+        headshots += (de.headshots || 0);
+    });
+
+    return totalShots > 0 ? Math.round((headshots / totalShots) * 100) : 0;
+};
+
+export const calculateKAST = (match: MatchWithDetails, puuid: string, totalRounds: number) => {
+    if (totalRounds === 0) return 0;
+
+    let kastRounds = 0;
+
+    match.rounds.forEach(round => {
+        const pStats = round.playerStats.find(ps => ps.puuid === puuid);
+        if (!pStats) return;
+
+        // K: Kill
+        const gotKill = (pStats.kills || 0) > 0;
+
+        // A: Assist
+        const gotAssist = match.kills.some(ke => {
+            const assistants = typeof ke.assistants === 'string' ? JSON.parse(ke.assistants) : (ke.assistants || []);
+            return ke.roundNum === round.roundNum && assistants.includes(puuid);
+        });
+
+        // S: Survive
+        const died = match.kills.some(ke =>
+            ke.roundNum === round.roundNum && ke.victimId === puuid
+        );
+
+        // T: Trade
+        let traded = false;
+        if (died) {
+            const deathEvent = match.kills.find(ke =>
+                ke.roundNum === round.roundNum && ke.victimId === puuid
+            );
+            if (deathEvent) {
+                const killerId = deathEvent.killerId;
+                const killerDeath = match.kills.find(ke =>
+                    ke.roundNum === round.roundNum &&
+                    ke.victimId === killerId &&
+                    ke.roundTime !== null &&
+                    deathEvent.roundTime !== null &&
+                    ke.roundTime > deathEvent.roundTime &&
+                    ke.roundTime <= deathEvent.roundTime + 3000 // 3 seconds trade window
+                );
+                if (killerDeath) killerDeath && (traded = true);
+            }
+        }
+
+        if (gotKill || gotAssist || !died || traded) {
+            kastRounds++;
+        }
+    });
+
+    return Math.round((kastRounds / totalRounds) * 100);
+};
+
+export const calculateFKFD = (match: MatchWithDetails, puuid: string) => {
+    let fk = 0;
+    let fd = 0;
+
+    match.rounds.forEach(round => {
+        const roundKills = match.kills
+            .filter(k => k.roundNum === round.roundNum)
+            .sort((a, b) => (a.roundTime || 0) - (b.roundTime || 0));
+
+        if (roundKills.length > 0) {
+            if (roundKills[0].killerId === puuid) fk++;
+            if (roundKills[0].victimId === puuid) fd++;
+        }
+    });
+
+    return { fk, fd };
+};
