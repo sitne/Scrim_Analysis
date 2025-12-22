@@ -18,6 +18,37 @@ export async function PATCH(
         const body = await request.json();
         const { alias, mergedToPuuid } = body;
 
+        // Authorization check: User must be a member of a team that:
+        // 1. Has this player in its roster OR
+        // 2. Has a match where this player participated
+        const membership = await prisma.teamMember.findFirst({
+            where: {
+                userId: user.id,
+                team: {
+                    OR: [
+                        {
+                            rosterPlayers: {
+                                some: { puuid }
+                            }
+                        },
+                        {
+                            matches: {
+                                some: {
+                                    players: {
+                                        some: { puuid }
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        });
+
+        if (!membership) {
+            return NextResponse.json({ error: 'このプレイヤーを編集する権限がありません' }, { status: 403 });
+        }
+
         // Validate input
         if (alias !== undefined && typeof alias !== 'string' && alias !== null) {
             return NextResponse.json({ error: 'Invalid alias' }, { status: 400 });

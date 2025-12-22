@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Settings, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface MatchSettingsDialogProps {
     matchId: string;
+    teamId: string;
     currentOpponentName: string;
     currentOpponentTag?: string;
     onClose: () => void;
@@ -14,6 +15,7 @@ interface MatchSettingsDialogProps {
 
 export function MatchSettingsDialog({
     matchId,
+    teamId,
     currentOpponentName,
     currentOpponentTag,
     onClose,
@@ -21,8 +23,21 @@ export function MatchSettingsDialog({
 }: MatchSettingsDialogProps) {
     const router = useRouter();
     const [opponentName, setOpponentName] = useState(currentOpponentName);
+    const [suggestions, setSuggestions] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        // Fetch unique opponent names for suggestions
+        fetch(`/api/team/${teamId}/opponents`)
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    setSuggestions(data);
+                }
+            })
+            .catch(err => console.error('Failed to fetch suggestions', err));
+    }, [teamId]);
 
     const handleSave = async () => {
         setIsLoading(true);
@@ -80,11 +95,17 @@ export function MatchSettingsDialog({
                                 <label className="block text-xs font-semibold text-gray-400 mb-1">Team Name</label>
                                 <input
                                     type="text"
+                                    list="opponent-suggestions"
                                     value={opponentName}
                                     onChange={(e) => setOpponentName(e.target.value)}
                                     className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-red-500"
                                     placeholder="Enter team name"
                                 />
+                                <datalist id="opponent-suggestions">
+                                    {suggestions.map(name => (
+                                        <option key={name} value={name} />
+                                    ))}
+                                </datalist>
                             </div>
                         </div>
                     </div>

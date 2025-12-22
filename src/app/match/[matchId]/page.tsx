@@ -181,6 +181,7 @@ export default async function MatchPage(props: MatchPageProps) {
                     {!isRedMyTeam && (
                         <MatchEditButton
                             matchId={match.matchId}
+                            teamId={match.teamId || ''}
                             currentOpponentName={redDisplayName}
                         />
                     )}
@@ -261,6 +262,7 @@ export default async function MatchPage(props: MatchPageProps) {
                     {!isBlueMyTeam && (
                         <MatchEditButton
                             matchId={match.matchId}
+                            teamId={match.teamId || ''}
                             currentOpponentName={blueDisplayName}
                         />
                     )}

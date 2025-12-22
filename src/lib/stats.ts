@@ -396,7 +396,18 @@ export const calculateADR = (match: MatchWithDetails, puuid: string, totalRounds
 };
 
 export const calculateHS = (match: MatchWithDetails, puuid: string) => {
-    const playerDamageEvents = match.damageEvents.filter(de => de.attackerId === puuid);
+    // ショットガンのUUIDリスト
+    const SHOTGUN_UUIDS = [
+        '91038161-4B7C-2150-7061-39B512B3B451', // Bucky
+        'EC845555-41DA-72BD-7C95-F396279FD13F', // Judge
+        '42DA8CCC-40D5-AFFC-BEEC-15AA47B42EDA', // Shorty
+    ];
+
+    const playerDamageEvents = match.damageEvents.filter((de: any) => {
+        // 対象プレイヤーであり、かつショットガンでないイベントのみを抽出
+        return de.attackerId === puuid && !SHOTGUN_UUIDS.includes(de.weapon || '');
+    });
+
     let totalShots = 0;
     let headshots = 0;
 

@@ -67,7 +67,12 @@ export async function PATCH(request: Request, { params }: RouteProps) {
     // Update match
     const updatedMatch = await prisma.match.update({
         where: { matchId },
-        data: updateData
+        data: updateData,
+        select: {
+            matchId: true,
+            redTeamName: true,
+            blueTeamName: true
+        }
     })
 
     return NextResponse.json({ success: true, match: updatedMatch })

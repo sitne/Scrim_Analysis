@@ -204,6 +204,7 @@ export async function importMatch(filePath: string) {
                                 legshots: dmg.legshots,
                                 bodyshots: dmg.bodyshots,
                                 headshots: dmg.headshots,
+                                weapon: pStats.economy?.weapon,
                             }
                         });
                     }

@@ -230,6 +230,7 @@ model DamageEvent {
   legshots            Int?
   bodyshots           Int?
   headshots           Int?
+  weapon              String?
   
   match               Match    @relation(fields: [matchId], references: [matchId])
 }

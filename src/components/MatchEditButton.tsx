@@ -6,10 +6,11 @@ import { MatchSettingsDialog } from './MatchSettingsDialog';
 
 interface MatchEditButtonProps {
     matchId: string;
+    teamId: string;
     currentOpponentName: string;
 }
 
-export function MatchEditButton({ matchId, currentOpponentName }: MatchEditButtonProps) {
+export function MatchEditButton({ matchId, teamId, currentOpponentName }: MatchEditButtonProps) {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
@@ -25,6 +26,7 @@ export function MatchEditButton({ matchId, currentOpponentName }: MatchEditButto
             {isOpen && (
                 <MatchSettingsDialog
                     matchId={matchId}
+                    teamId={teamId}
                     currentOpponentName={currentOpponentName}
                     onClose={() => setIsOpen(false)}
                 />
