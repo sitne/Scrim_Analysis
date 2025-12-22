@@ -6,6 +6,7 @@ import { getAgentName, getAgentIconPath, getMapDisplayName } from '@/lib/utils';
 import { Prisma } from '@prisma/client';
 import { MatchTags } from '@/components/MatchTags';
 import { DeleteButton } from '@/components/DeleteButton';
+import { MatchEditButton } from '@/components/MatchEditButton';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import {
@@ -116,7 +117,11 @@ export default async function MatchPage(props: MatchPageProps) {
     // @ts-ignore
     const redDisplayName = match.redTeamName || 'Red Team';
     // @ts-ignore
+    const redTeamTag = match.redTeamTag;
+    // @ts-ignore
     const blueDisplayName = match.blueTeamName || 'Blue Team';
+    // @ts-ignore
+    const blueTeamTag = match.blueTeamTag;
 
     return (
         <div className="space-y-8">
@@ -173,23 +178,29 @@ export default async function MatchPage(props: MatchPageProps) {
                 <div className="flex items-center gap-2">
                     <h2 className="text-2xl font-bold text-red-500">{redDisplayName}</h2>
                     {isRedMyTeam && <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded border border-red-500/30">YOUR TEAM</span>}
+                    {!isRedMyTeam && (
+                        <MatchEditButton
+                            matchId={match.matchId}
+                            currentOpponentName={redDisplayName}
+                        />
+                    )}
                 </div>
                 <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-gray-800 text-sm">
                                 <tr>
-                                    <th className="px-4 py-3 text-left text-white">PLAYER</th>
-                                    <th className="px-4 py-3 text-center text-white">ACS</th>
-                                    <th className="px-4 py-3 text-center text-white">K</th>
-                                    <th className="px-4 py-3 text-center text-white">D</th>
-                                    <th className="px-4 py-3 text-center text-white">A</th>
-                                    <th className="px-4 py-3 text-center text-white">K/D</th>
-                                    <th className="px-4 py-3 text-center text-white">ADR</th>
-                                    <th className="px-4 py-3 text-center text-white">FK</th>
-                                    <th className="px-4 py-3 text-center text-white">FD</th>
-                                    <th className="px-4 py-3 text-center text-white">HS%</th>
-                                    <th className="px-4 py-3 text-center text-white">KAST</th>
+                                    <th className="px-4 py-3 text-left text-white min-w-[200px]">PLAYER</th>
+                                    <th className="px-4 py-3 text-center text-white w-24">ACS</th>
+                                    <th className="px-4 py-3 text-center text-white w-20">K</th>
+                                    <th className="px-4 py-3 text-center text-white w-20">D</th>
+                                    <th className="px-4 py-3 text-center text-white w-20">A</th>
+                                    <th className="px-4 py-3 text-center text-white w-24">K/D</th>
+                                    <th className="px-4 py-3 text-center text-white w-24">ADR</th>
+                                    <th className="px-4 py-3 text-center text-white w-20">FK</th>
+                                    <th className="px-4 py-3 text-center text-white w-20">FD</th>
+                                    <th className="px-4 py-3 text-center text-white w-24">HS%</th>
+                                    <th className="px-4 py-3 text-center text-white w-24">KAST</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
@@ -247,23 +258,29 @@ export default async function MatchPage(props: MatchPageProps) {
                 <div className="flex items-center gap-2">
                     <h2 className="text-2xl font-bold text-blue-500">{blueDisplayName}</h2>
                     {isBlueMyTeam && <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded border border-blue-500/30">YOUR TEAM</span>}
+                    {!isBlueMyTeam && (
+                        <MatchEditButton
+                            matchId={match.matchId}
+                            currentOpponentName={blueDisplayName}
+                        />
+                    )}
                 </div>
                 <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-gray-800 text-sm">
                                 <tr>
-                                    <th className="px-4 py-3 text-left text-white">PLAYER</th>
-                                    <th className="px-4 py-3 text-center text-white">ACS</th>
-                                    <th className="px-4 py-3 text-center text-white">K</th>
-                                    <th className="px-4 py-3 text-center text-white">D</th>
-                                    <th className="px-4 py-3 text-center text-white">A</th>
-                                    <th className="px-4 py-3 text-center text-white">K/D</th>
-                                    <th className="px-4 py-3 text-center text-white">ADR</th>
-                                    <th className="px-4 py-3 text-center text-white">FK</th>
-                                    <th className="px-4 py-3 text-center text-white">FD</th>
-                                    <th className="px-4 py-3 text-center text-white">HS%</th>
-                                    <th className="px-4 py-3 text-center text-white">KAST</th>
+                                    <th className="px-4 py-3 text-left text-white min-w-[200px]">PLAYER</th>
+                                    <th className="px-4 py-3 text-center text-white w-24">ACS</th>
+                                    <th className="px-4 py-3 text-center text-white w-20">K</th>
+                                    <th className="px-4 py-3 text-center text-white w-20">D</th>
+                                    <th className="px-4 py-3 text-center text-white w-20">A</th>
+                                    <th className="px-4 py-3 text-center text-white w-24">K/D</th>
+                                    <th className="px-4 py-3 text-center text-white w-24">ADR</th>
+                                    <th className="px-4 py-3 text-center text-white w-20">FK</th>
+                                    <th className="px-4 py-3 text-center text-white w-20">FD</th>
+                                    <th className="px-4 py-3 text-center text-white w-24">HS%</th>
+                                    <th className="px-4 py-3 text-center text-white w-24">KAST</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">

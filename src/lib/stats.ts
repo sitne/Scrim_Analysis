@@ -91,7 +91,12 @@ export interface CompositionStat {
     winRate: number;
 }
 
-export function calculateStats(matches: MatchWithDetails[], filterPlayers: string[], filterAgents: string[]) {
+export function calculateStats(
+    matches: MatchWithDetails[],
+    filterPlayers: string[],
+    filterAgents: string[],
+    options: { homeTeamOnly?: boolean } = {}
+) {
     // ... (Variables initialization)
     const totalMatches = matches.length;
     let totalRounds = 0;
@@ -109,14 +114,11 @@ export function calculateStats(matches: MatchWithDetails[], filterPlayers: strin
     const compositionStatsMap = new Map<string, { played: number; wins: number }>();
 
     matches.forEach(match => {
-        // Determine "My Team" Side based on Filtered Players
-        let myTeamSide: string | null = null;
+        // Determine "My Team" Side
+        // Prioritize filterPlayers if present, otherwise use match.myTeamSide
+        let myTeamSide: string | null = match.myTeamSide;
 
         if (filterPlayers.length > 0) {
-            // Resolve filtered players to their effective PUUIDs for comparison is tricky here
-            // because filterPlayers contains effective PUUIDs.
-            // We need to check if any player in the match *resolves* to a filtered PUUID.
-
             const myTeamPlayer = match.players.find(p => {
                 const effectivePuuid = p.player.mergedToPuuid || p.puuid;
                 return filterPlayers.includes(effectivePuuid);
@@ -126,7 +128,6 @@ export function calculateStats(matches: MatchWithDetails[], filterPlayers: strin
 
         totalRounds += match.rounds.length;
 
-        // ... (Map Stats logic)
         // Map Stats
         if (!mapStatsMap.has(match.mapId)) {
             mapStatsMap.set(match.mapId, {
@@ -165,10 +166,14 @@ export function calculateStats(matches: MatchWithDetails[], filterPlayers: strin
                 effectiveTag = mp.player.mergedTo.tagLine;
             }
 
-            // Filter Players
+            // Filtering Logic
+            // 1. Filter Players (Explicit selection)
             if (filterPlayers.length > 0 && !filterPlayers.includes(effectivePuuid)) return;
 
-            // Filter Agents
+            // 2. Home Team Only (Implicit context)
+            if (options.homeTeamOnly && myTeamSide && mp.teamId !== myTeamSide) return;
+
+            // 3. Filter Agents
             if (filterAgents.length > 0 && mp.characterId && !filterAgents.includes(mp.characterId)) return;
 
             // Player Stats
@@ -195,16 +200,13 @@ export function calculateStats(matches: MatchWithDetails[], filterPlayers: strin
             pStat.score += mp.score || 0;
             pStat.roundsPlayed += match.rounds.length;
 
-            // Agent Stats (Use effective PUUID for logic if needed, but here we aggregate by Agent ID)
-            // Note: If a player played multiple agents in different matches (or merged players did),
-            // this simple aggregation is fine.
+            // Agent Stats
             if (mp.characterId) {
                 if (!agentStatsMap.has(mp.characterId)) {
                     agentStatsMap.set(mp.characterId, { picks: 0, wins: 0, matches: 0 });
                 }
                 const aStat = agentStatsMap.get(mp.characterId)!;
                 aStat.picks++;
-                // Check if this player's team won
                 if (mp.teamId === match.winningTeam) {
                     aStat.wins++;
                 }
@@ -212,26 +214,22 @@ export function calculateStats(matches: MatchWithDetails[], filterPlayers: strin
         });
 
         // Composition Stats
-        if (filterPlayers.length > 0) {
-            const myTeamPlayers = match.players.filter(p => filterPlayers.includes(p.puuid));
-            if (myTeamPlayers.length > 0) {
-                const myTeamSide = myTeamPlayers[0].teamId;
-                // Get all 5 agents from my team
-                const teamAgents = match.players
-                    .filter(p => p.teamId === myTeamSide && p.characterId)
-                    .map(p => p.characterId!)
-                    .sort(); // Sort for consistency
+        if (myTeamSide) {
+            // Get all 5 agents from the identified team (Home Team or filtered)
+            const teamAgents = match.players
+                .filter(p => p.teamId === myTeamSide && p.characterId)
+                .map(p => p.characterId!)
+                .sort();
 
-                if (teamAgents.length === 5) {
-                    const compKey = teamAgents.join(',');
-                    if (!compositionStatsMap.has(compKey)) {
-                        compositionStatsMap.set(compKey, { played: 0, wins: 0 });
-                    }
-                    const compStat = compositionStatsMap.get(compKey)!;
-                    compStat.played++;
-                    if (match.winningTeam === myTeamSide) {
-                        compStat.wins++;
-                    }
+            if (teamAgents.length === 5) {
+                const compKey = teamAgents.join(',');
+                if (!compositionStatsMap.has(compKey)) {
+                    compositionStatsMap.set(compKey, { played: 0, wins: 0 });
+                }
+                const compStat = compositionStatsMap.get(compKey)!;
+                compStat.played++;
+                if (match.winningTeam === myTeamSide) {
+                    compStat.wins++;
                 }
             }
         }
@@ -240,9 +238,6 @@ export function calculateStats(matches: MatchWithDetails[], filterPlayers: strin
         if (myTeamSide) {
             match.rounds.forEach(round => {
                 const isRed = myTeamSide === 'Red';
-                // Determine if the round is played on the "First Half Side" (Red=Atk, Blue=Def)
-                // Rounds 0-11: Yes, Rounds 12-23: No
-                // OT Rounds (24+): Even=Yes, Odd=No
                 const isFirstHalfSide = (round.roundNum < 12) || (round.roundNum >= 24 && (round.roundNum - 24) % 2 === 0);
                 const currentSide = (isRed === isFirstHalfSide) ? 'Attack' : 'Defense';
 
@@ -257,12 +252,10 @@ export function calculateStats(matches: MatchWithDetails[], filterPlayers: strin
                     if (weWon) mapStat.defenseWins++;
                 }
 
-                // Pistol Rounds (0 and 12)
+                // Pistol Rounds
                 if (round.roundNum === 0 || round.roundNum === 12) {
                     mapStat.pistolRounds++;
                     if (weWon) mapStat.pistolWins++;
-
-                    // Track by side
                     if (currentSide === 'Attack') {
                         mapStat.pistolAttackRounds++;
                         if (weWon) mapStat.pistolAttackWins++;
@@ -272,36 +265,27 @@ export function calculateStats(matches: MatchWithDetails[], filterPlayers: strin
                     }
                 }
 
-                // Post-Plant / Retake (plantRoundTime === 0 means not planted)
+                // Post-Plant / Retake
                 const spikePlanted = round.plantRoundTime !== null && round.plantRoundTime > 0;
                 if (spikePlanted) {
                     if (currentSide === 'Defense') {
-                        // Retake Scenario
-                        // Exclude case: Round timer expired (defense won without actual retake)
                         if (round.roundResult !== 'Round timer expired') {
                             mapStat.retakeOpportunities++;
                             if (weWon) mapStat.retakeSuccesses++;
                         }
                     } else {
-                        // Post-Plant Scenario (Attack)
-                        // Exclude case: Plant happened AFTER eliminating all enemies
-                        // (i.e., roundResult is "Eliminated" and plant time > last kill time)
                         let isValidPostPlant = true;
-
                         if (round.roundResult === 'Eliminated') {
                             const roundKillsForCheck = match.kills
                                 .filter(k => k.roundNum === round.roundNum)
                                 .sort((a, b) => (a.roundTime || 0) - (b.roundTime || 0));
-
                             if (roundKillsForCheck.length > 0) {
                                 const lastKillTime = roundKillsForCheck[roundKillsForCheck.length - 1].roundTime || 0;
                                 if (round.plantRoundTime && round.plantRoundTime > lastKillTime) {
-                                    // Plant happened after the last kill = eliminated then planted
                                     isValidPostPlant = false;
                                 }
                             }
                         }
-
                         if (isValidPostPlant) {
                             mapStat.postPlantOpportunities++;
                             if (weWon) mapStat.postPlantWins++;
@@ -319,11 +303,9 @@ export function calculateStats(matches: MatchWithDetails[], filterPlayers: strin
                     const killerId = firstKill.killerId;
                     const victimId = firstKill.victimId;
 
-                    // Update Killer Stats (if tracked)
                     if (killerId && playerStatsMap.has(killerId)) {
                         playerStatsMap.get(killerId)!.firstKills++;
                     }
-                    // Update Victim Stats (if tracked)
                     if (victimId && playerStatsMap.has(victimId)) {
                         playerStatsMap.get(victimId)!.firstDeaths++;
                     }
@@ -359,13 +341,12 @@ export function calculateStats(matches: MatchWithDetails[], filterPlayers: strin
         agentName: getAgentName(agentId),
         ...stat,
         winRate: stat.picks > 0 ? (stat.wins / stat.picks) * 100 : 0,
-        pickRate: totalMatches > 0 ? (stat.picks / (totalMatches * 5)) * 100 : 0, // 5 players per team
+        pickRate: totalMatches > 0 ? (stat.picks / (totalMatches * 5)) * 100 : 0,
     })).sort((a, b) => {
         const roleA = getAgentRole(a.agentId);
         const roleB = getAgentRole(b.agentId);
         const orderA = roleOrder[roleA] || 99;
         const orderB = roleOrder[roleB] || 99;
-
         if (orderA !== orderB) return orderA - orderB;
         return a.agentName.localeCompare(b.agentName);
     });
@@ -385,7 +366,7 @@ export function calculateStats(matches: MatchWithDetails[], filterPlayers: strin
             wins: stat.wins,
             winRate: stat.played > 0 ? (stat.wins / stat.played) * 100 : 0,
         };
-    }).sort((a, b) => b.played - a.played); // Sort by most played
+    }).sort((a, b) => b.played - a.played);
 
     return {
         totalMatches,

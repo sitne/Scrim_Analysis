@@ -55,7 +55,7 @@ export default async function TeamStatsPage(props: PageProps) {
     // Parse Filters
     const filterMaps = typeof searchParams.maps === 'string' ? searchParams.maps.split(',') : [];
     const filterAgents = typeof searchParams.agents === 'string' ? searchParams.agents.split(',') : [];
-    const filterPlayers = typeof searchParams.players === 'string' ? searchParams.players.split(',') : [];
+
     const includeTags = typeof searchParams.includeTags === 'string' ? searchParams.includeTags.split(',') : [];
     const excludeTags = typeof searchParams.excludeTags === 'string' ? searchParams.excludeTags.split(',') : [];
     const startDate = typeof searchParams.startDate === 'string' ? searchParams.startDate : null;
@@ -64,7 +64,7 @@ export default async function TeamStatsPage(props: PageProps) {
     const filterOpponents = typeof searchParams.opponents === 'string' ? searchParams.opponents.split(',') : [];
 
     // 4. チーム単位でデータ取得
-    const [matchesForOpponentsResult, matchesData, agentsData, playersData] = await Promise.all([
+    const [matchesForOpponentsResult, matchesData, agentsData] = await Promise.all([
         prisma.match.findMany({
             where: { teamId: id },
             select: {
@@ -88,44 +88,25 @@ export default async function TeamStatsPage(props: PageProps) {
             },
             select: { characterId: true },
             distinct: ['characterId']
-        }),
-        prisma.player.findMany({
-            where: {
-                matches: {
-                    some: {
-                        match: { teamId: id }
-                    }
-                }
-            },
-            include: {
-                matches: {
-                    where: { match: { teamId: id } },
-                    select: { matchId: true }
-                }
-            }
         })
     ]);
 
     const matchesForOpponents = matchesForOpponentsResult as any[];
 
     // Opponent Aggregation
-    const opponentsMap = new Map<string, { name: string; tag: string; count: number }>();
+    const opponentsMap = new Map<string, { name: string; count: number }>();
     matchesForOpponents.forEach(m => {
-        let name, tag;
-        // myTeamSideがnullの場合は判定できないのでスキップ（あるいは両方チェックするなど）
-        // ここではmyTeamSideがある前提で進めるが、自動判定ロジックが動いていれば入るはず
+        let name;
         if (m.myTeamSide === 'Red') {
             name = m.blueTeamName;
-            tag = m.blueTeamTag;
         } else if (m.myTeamSide === 'Blue') {
             name = m.redTeamName;
-            tag = m.redTeamTag;
         }
 
         if (name) {
-            const key = `${name}#${tag || ''}`;
+            const key = name;
             if (!opponentsMap.has(key)) {
-                opponentsMap.set(key, { name, tag: tag || '', count: 0 });
+                opponentsMap.set(key, { name, count: 0 });
             }
             opponentsMap.get(key)!.count++;
         }
@@ -136,21 +117,7 @@ export default async function TeamStatsPage(props: PageProps) {
 
     const availableMaps = matchesData.map(m => m.mapId).sort((a, b) => getMapDisplayName(a).localeCompare(getMapDisplayName(b)));
     const availableAgents = agentsData.map(a => a.characterId!).filter(Boolean).sort((a, b) => getAgentName(a).localeCompare(getAgentName(b)));
-    const availablePlayers = playersData
-        .map(p => ({
-            puuid: p.puuid,
-            name: p.alias || p.gameName,
-            tag: p.tagLine,
-            matchCount: p.matches.length,
-            mergedToPuuid: p.mergedToPuuid
-        }))
-        .sort((a, b) => b.matchCount - a.matchCount);
 
-    // Auto-select top 5 players if no filters are set
-    if (!searchParams.players && availablePlayers.length > 0) {
-        const top5Players = availablePlayers.slice(0, 5).map(p => p.puuid).join(',');
-        redirect(`/team/${id}/stats?players=${top5Players}`);
-    }
 
     // Build Prisma Where Clause (with teamId filter)
     const whereClause: Prisma.MatchWhereInput = {
@@ -162,28 +129,21 @@ export default async function TeamStatsPage(props: PageProps) {
     }
 
     if (filterOpponents.length > 0) {
-        // Opponent filter logic:
-        // (myTeamSide == 'Red' AND blueTeamName+Tag IN selection) OR (myTeamSide == 'Blue' AND redTeamName+Tag IN selection)
-        // Adjust for tag being optional in search params format "Name#Tag"
-
         const conditions: any[] = [];
 
-        filterOpponents.forEach(encoded => {
-            const [name, tag] = encoded.split('#');
+        filterOpponents.forEach(name => {
             // Condition 1: We are Red, Opponent is Blue
             conditions.push({
                 AND: [
                     { myTeamSide: 'Red' },
-                    { blueTeamName: name },
-                    tag ? { blueTeamTag: tag } : {}
+                    { blueTeamName: name }
                 ]
             });
             // Condition 2: We are Blue, Opponent is Red
             conditions.push({
                 AND: [
                     { myTeamSide: 'Blue' },
-                    { redTeamName: name },
-                    tag ? { redTeamTag: tag } : {}
+                    { redTeamName: name }
                 ]
             });
         });
@@ -272,7 +232,7 @@ export default async function TeamStatsPage(props: PageProps) {
         agentStats,
         playerStats,
         compositionStats
-    } = calculateStats(matches, filterPlayers, filterAgents);
+    } = calculateStats(matches, [], filterAgents, { homeTeamOnly: true });
 
     return (
         <div className="min-h-screen bg-[#0f1923] text-white font-sans">
@@ -297,7 +257,7 @@ export default async function TeamStatsPage(props: PageProps) {
                     <FilterBar
                         maps={availableMaps}
                         agents={availableAgents}
-                        players={availablePlayers}
+
                         opponents={availableOpponents}
                     />
                 </div>
@@ -316,46 +276,36 @@ export default async function TeamStatsPage(props: PageProps) {
                         <div className="bg-gray-900/50 border border-gray-800 p-6 rounded-lg">
                             <div className="text-gray-400 text-sm font-semibold mb-1">マップ勝率</div>
                             <div className="text-4xl font-bold text-green-400">
-                                {filterPlayers.length > 0
-                                    ? `${(totalMatches > 0 ? ((mapStats.reduce((acc, curr) => acc + curr.myTeamWins, 0) / mapStats.reduce((acc, curr) => acc + curr.played, 0)) * 100).toFixed(1) : 0)}%`
-                                    : <span className="text-gray-500 text-lg">プレイヤーを選択</span>
-                                }
+                                {`${(totalMatches > 0 ? ((mapStats.reduce((acc, curr) => acc + curr.myTeamWins, 0) / mapStats.reduce((acc, curr) => acc + curr.played, 0)) * 100).toFixed(1) : 0)}%`}
                             </div>
                         </div>
                         <div className="bg-gray-900/50 border border-gray-800 p-6 rounded-lg">
                             <div className="text-gray-400 text-sm font-semibold mb-1">ラウンド勝率</div>
-                            {filterPlayers.length > 0 ? (
-                                <div className="flex gap-4 items-end">
-                                    <div>
-                                        <span className="text-2xl font-bold text-orange-400">
-                                            {mapStats.reduce((acc, curr) => acc + curr.attackRounds, 0) > 0
-                                                ? ((mapStats.reduce((acc, curr) => acc + curr.attackWins, 0) / mapStats.reduce((acc, curr) => acc + curr.attackRounds, 0)) * 100).toFixed(0)
-                                                : 0}%
-                                        </span>
-                                        <span className="text-xs text-gray-500 ml-1">ATK</span>
-                                    </div>
-                                    <div>
-                                        <span className="text-2xl font-bold text-blue-400">
-                                            {mapStats.reduce((acc, curr) => acc + curr.defenseRounds, 0) > 0
-                                                ? ((mapStats.reduce((acc, curr) => acc + curr.defenseWins, 0) / mapStats.reduce((acc, curr) => acc + curr.defenseRounds, 0)) * 100).toFixed(0)
-                                                : 0}%
-                                        </span>
-                                        <span className="text-xs text-gray-500 ml-1">DEF</span>
-                                    </div>
+                            <div className="flex gap-4 items-end">
+                                <div>
+                                    <span className="text-2xl font-bold text-orange-400">
+                                        {mapStats.reduce((acc, curr) => acc + curr.attackRounds, 0) > 0
+                                            ? ((mapStats.reduce((acc, curr) => acc + curr.attackWins, 0) / mapStats.reduce((acc, curr) => acc + curr.attackRounds, 0)) * 100).toFixed(0)
+                                            : 0}%
+                                    </span>
+                                    <span className="text-xs text-gray-500 ml-1">ATK</span>
                                 </div>
-                            ) : (
-                                <span className="text-gray-500 text-lg">プレイヤーを選択</span>
-                            )}
+                                <div>
+                                    <span className="text-2xl font-bold text-blue-400">
+                                        {mapStats.reduce((acc, curr) => acc + curr.defenseRounds, 0) > 0
+                                            ? ((mapStats.reduce((acc, curr) => acc + curr.defenseWins, 0) / mapStats.reduce((acc, curr) => acc + curr.defenseRounds, 0)) * 100).toFixed(0)
+                                            : 0}%
+                                    </span>
+                                    <span className="text-xs text-gray-500 ml-1">DEF</span>
+                                </div>
+                            </div>
                         </div>
                         <div className="bg-gray-900/50 border border-gray-800 p-6 rounded-lg">
                             <div className="text-gray-400 text-sm font-semibold mb-1">ピストル勝率</div>
                             <div className="text-4xl font-bold text-yellow-400">
-                                {filterPlayers.length > 0
-                                    ? `${(mapStats.reduce((acc, curr) => acc + curr.pistolRounds, 0) > 0
-                                        ? ((mapStats.reduce((acc, curr) => acc + curr.pistolWins, 0) / mapStats.reduce((acc, curr) => acc + curr.pistolRounds, 0)) * 100).toFixed(1)
-                                        : 0)}%`
-                                    : <span className="text-gray-500 text-lg">プレイヤーを選択</span>
-                                }
+                                {`${(mapStats.reduce((acc, curr) => acc + curr.pistolRounds, 0) > 0
+                                    ? ((mapStats.reduce((acc, curr) => acc + curr.pistolWins, 0) / mapStats.reduce((acc, curr) => acc + curr.pistolRounds, 0)) * 100).toFixed(1)
+                                    : 0)}%`}
                             </div>
                         </div>
                     </div>
@@ -385,31 +335,31 @@ export default async function TeamStatsPage(props: PageProps) {
                                                 <td className="p-4 font-bold text-lg">{stat.mapName}</td>
                                                 <td className="p-4 text-center font-mono">{stat.played}</td>
                                                 <td className="p-4 text-center font-mono text-green-400">
-                                                    {filterPlayers.length > 0 ? `${stat.myTeamWinRate.toFixed(1)}%` : '-'}
+                                                    {`${stat.myTeamWinRate.toFixed(1)}%`}
                                                 </td>
                                                 <td className="p-4 text-center font-mono text-orange-400">
-                                                    {filterPlayers.length > 0 ? `${stat.attackWinRate.toFixed(1)}%` : '-'}
-                                                    {filterPlayers.length > 0 && <span className="text-xs text-gray-500 ml-1">({stat.attackWins}/{stat.attackRounds})</span>}
+                                                    {`${stat.attackWinRate.toFixed(1)}%`}
+                                                    <span className="text-xs text-gray-500 ml-1">({stat.attackWins}/{stat.attackRounds})</span>
                                                 </td>
                                                 <td className="p-4 text-center font-mono text-blue-400">
-                                                    {filterPlayers.length > 0 ? `${stat.defenseWinRate.toFixed(1)}%` : '-'}
-                                                    {filterPlayers.length > 0 && <span className="text-xs text-gray-500 ml-1">({stat.defenseWins}/{stat.defenseRounds})</span>}
+                                                    {`${stat.defenseWinRate.toFixed(1)}%`}
+                                                    <span className="text-xs text-gray-500 ml-1">({stat.defenseWins}/{stat.defenseRounds})</span>
                                                 </td>
                                                 <td className="p-4 text-center font-mono text-orange-400">
-                                                    {filterPlayers.length > 0 ? `${stat.pistolAttackWinRate.toFixed(1)}%` : '-'}
-                                                    {filterPlayers.length > 0 && <span className="text-xs text-gray-500 ml-1">({stat.pistolAttackWins}/{stat.pistolAttackRounds})</span>}
+                                                    {`${stat.pistolAttackWinRate.toFixed(1)}%`}
+                                                    <span className="text-xs text-gray-500 ml-1">({stat.pistolAttackWins}/{stat.pistolAttackRounds})</span>
                                                 </td>
                                                 <td className="p-4 text-center font-mono text-blue-400">
-                                                    {filterPlayers.length > 0 ? `${stat.pistolDefenseWinRate.toFixed(1)}%` : '-'}
-                                                    {filterPlayers.length > 0 && <span className="text-xs text-gray-500 ml-1">({stat.pistolDefenseWins}/{stat.pistolDefenseRounds})</span>}
+                                                    {`${stat.pistolDefenseWinRate.toFixed(1)}%`}
+                                                    <span className="text-xs text-gray-500 ml-1">({stat.pistolDefenseWins}/{stat.pistolDefenseRounds})</span>
                                                 </td>
                                                 <td className="p-4 text-center font-mono text-purple-400">
-                                                    {filterPlayers.length > 0 ? `${stat.retakeSuccessRate.toFixed(1)}%` : '-'}
-                                                    {filterPlayers.length > 0 && <span className="text-xs text-gray-500 ml-1">({stat.retakeSuccesses}/{stat.retakeOpportunities})</span>}
+                                                    {`${stat.retakeSuccessRate.toFixed(1)}%`}
+                                                    <span className="text-xs text-gray-500 ml-1">({stat.retakeSuccesses}/{stat.retakeOpportunities})</span>
                                                 </td>
                                                 <td className="p-4 text-center font-mono text-pink-400">
-                                                    {filterPlayers.length > 0 ? `${stat.postPlantWinRate.toFixed(1)}%` : '-'}
-                                                    {filterPlayers.length > 0 && <span className="text-xs text-gray-500 ml-1">({stat.postPlantWins}/{stat.postPlantOpportunities})</span>}
+                                                    {`${stat.postPlantWinRate.toFixed(1)}%`}
+                                                    <span className="text-xs text-gray-500 ml-1">({stat.postPlantWins}/{stat.postPlantOpportunities})</span>
                                                 </td>
                                             </tr>
                                         ))}

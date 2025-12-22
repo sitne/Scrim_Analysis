@@ -3,23 +3,20 @@
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useCallback, useState, useEffect } from 'react';
 import { getAgentName, getMapDisplayName, getTagColor } from '@/lib/utils';
-import { ChevronDown, ChevronUp, Filter, Settings } from 'lucide-react';
-import { PlayerSettingsDialog } from './PlayerSettingsDialog';
+import { ChevronDown, ChevronUp, Filter } from 'lucide-react';
 
 interface FilterBarProps {
     maps: string[];
     agents: string[];
-    players: { puuid: string; name: string; tag: string; matchCount?: number; mergedToPuuid?: string | null }[];
     showMaps?: boolean;
     showAgents?: boolean;
     showDate?: boolean;
-    opponents?: { name: string; tag: string; count: number }[];
+    opponents?: { name: string; count: number }[];
 }
 
 export function FilterBar({
     maps,
     agents,
-    players,
     showMaps = true,
     showAgents = true,
     showDate = true,
@@ -35,30 +32,22 @@ export function FilterBar({
     // Local state for UI (syncs with URL on mount/update)
     const [selectedMaps, setSelectedMaps] = useState<string[]>([]);
     const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
-    const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
-    const [selectedOpponents, setSelectedOpponents] = useState<{ name: string; tag: string }[]>([]);
+    const [selectedOpponents, setSelectedOpponents] = useState<string[]>([]);
     const [dateRange, setDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
-    const [playerSearch, setPlayerSearch] = useState<string>('');
     const [availableTags, setAvailableTags] = useState<string[]>([]);
     const [includeTags, setIncludeTags] = useState<string[]>([]);
     const [excludeTags, setExcludeTags] = useState<string[]>([]);
-    const [showMerged, setShowMerged] = useState<boolean>(false);
-    const [editingPlayer, setEditingPlayer] = useState<{ puuid: string; name: string; tag: string; mergedToPuuid?: string | null } | null>(null);
 
     // Sync state from URL
     useEffect(() => {
         setSelectedMaps(searchParams.get('maps')?.split(',').filter(Boolean) || []);
         setSelectedAgents(searchParams.get('agents')?.split(',').filter(Boolean) || []);
-        setSelectedPlayers(searchParams.get('players')?.split(',').filter(Boolean) || []);
-        setIncludeTags(searchParams.get('includeTags')?.split(',').filter(Boolean) || []);
-        setExcludeTags(searchParams.get('excludeTags')?.split(',').filter(Boolean) || []);
 
         const rawOpponents = searchParams.get('opponents')?.split(',').filter(Boolean) || [];
-        const parsedOpponents = rawOpponents.map(o => {
-            const [name, tag] = o.split('#');
-            return { name, tag };
-        });
-        setSelectedOpponents(parsedOpponents);
+        setSelectedOpponents(rawOpponents);
+
+        setIncludeTags(searchParams.get('includeTags')?.split(',').filter(Boolean) || []);
+        setExcludeTags(searchParams.get('excludeTags')?.split(',').filter(Boolean) || []);
 
         setDateRange({
             start: searchParams.get('startDate') || '',
@@ -92,12 +81,6 @@ export function FilterBar({
         value: string,
         setFn: (val: string[]) => void
     ) => {
-        // Prevent removing the last player
-        if (key === 'players' && currentSelection.length === 1 && currentSelection.includes(value)) {
-            alert('最低1人のプレイヤーを選択してください');
-            return;
-        }
-
         const newSelection = currentSelection.includes(value)
             ? currentSelection.filter(v => v !== value)
             : [...currentSelection, value];
@@ -106,20 +89,18 @@ export function FilterBar({
         updateFilters({ [key]: newSelection.join(',') });
     };
 
-    const handleOpponentSelect = (name: string, tag: string) => {
-        const value = `${name}#${tag}`;
-        const isSelected = selectedOpponents.some(o => o.name === name && o.tag === tag);
+    const handleOpponentSelect = (name: string) => {
+        const isSelected = selectedOpponents.includes(name);
 
         let newSelection;
         if (isSelected) {
-            newSelection = selectedOpponents.filter(o => o.name !== name || o.tag !== tag);
+            newSelection = selectedOpponents.filter(o => o !== name);
         } else {
-            newSelection = [...selectedOpponents, { name, tag }];
+            newSelection = [...selectedOpponents, name];
         }
 
         setSelectedOpponents(newSelection);
-        const encoded = newSelection.map(o => `${o.name}#${o.tag}`).join(',');
-        updateFilters({ opponents: encoded });
+        updateFilters({ opponents: newSelection.join(',') });
     }
 
     const handleDateChange = (type: 'start' | 'end', value: string) => {
@@ -131,31 +112,8 @@ export function FilterBar({
         });
     };
 
-    // Filter players based on search
-    const filteredPlayers = players.filter(player => {
-        const matchesSearch = playerSearch === '' ||
-            player.name.toLowerCase().includes(playerSearch.toLowerCase()) ||
-            player.tag.toLowerCase().includes(playerSearch.toLowerCase());
-
-        const isMerged = !!player.mergedToPuuid;
-
-        if (!matchesSearch) return false;
-        if (isMerged && !showMerged) return false;
-
-        return true;
-    });
-
     // Show only top 5 players by default
     const [showAllPlayers, setShowAllPlayers] = useState<boolean>(false);
-    const PLAYERS_LIMIT = 5;
-    const displayedPlayers = showAllPlayers || playerSearch !== ''
-        ? filteredPlayers
-        : filteredPlayers.slice(0, PLAYERS_LIMIT);
-
-    // Get selected player names for summary
-    const selectedPlayerNames = players
-        .filter(p => selectedPlayers.includes(p.puuid))
-        .map(p => p.name);
 
     // Count active filters
     const activeFilterCount = selectedMaps.length + selectedAgents.length + includeTags.length + excludeTags.length + selectedOpponents.length + (dateRange.start ? 1 : 0) + (dateRange.end ? 1 : 0);
@@ -174,19 +132,14 @@ export function FilterBar({
                     {/* Active filters summary when collapsed */}
                     {isCollapsed && (
                         <div className="flex items-center gap-2 ml-2 flex-wrap">
-                            {selectedPlayerNames.length > 0 && selectedPlayerNames.map(name => (
-                                <span key={name} className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">
-                                    {name}
-                                </span>
-                            ))}
                             {selectedMaps.length > 0 && selectedMaps.map(mapId => (
                                 <span key={mapId} className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">
                                     {getMapDisplayName(mapId)}
                                 </span>
                             ))}
-                            {selectedOpponents.length > 0 && selectedOpponents.map(t => (
-                                <span key={`${t.name}#${t.tag}`} className="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded">
-                                    VS {t.name}
+                            {selectedOpponents.length > 0 && selectedOpponents.map(name => (
+                                <span key={name} className="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded">
+                                    VS {name}
                                 </span>
                             ))}
                             {selectedAgents.length > 0 && selectedAgents.map(agentId => (
@@ -280,11 +233,11 @@ export function FilterBar({
                                 <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
                                     {opponents.map(t => (
                                         <button
-                                            key={`${t.name}#${t.tag}`}
-                                            onClick={() => handleOpponentSelect(t.name, t.tag)}
-                                            className={`px-3 py-1 text-xs rounded border transition-colors ${selectedOpponents.some(o => o.name === t.name && o.tag === t.tag)
-                                                    ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400'
-                                                    : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
+                                            key={t.name}
+                                            onClick={() => handleOpponentSelect(t.name)}
+                                            className={`px-3 py-1 text-xs rounded border transition-colors ${selectedOpponents.includes(t.name)
+                                                ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400'
+                                                : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
                                                 }`}
                                         >
                                             {t.name}
@@ -299,95 +252,6 @@ export function FilterBar({
                     </div>
 
                     <div className="flex flex-wrap gap-4 border-t border-gray-800 pt-4">
-                        {/* Players Filter */}
-                        <div className="flex-1 min-w-[200px]">
-                            <label className="block text-xs text-gray-400 mb-2 font-semibold">PLAYERS</label>
-
-                            {/* Search Box */}
-                            <input
-                                type="text"
-                                placeholder="Search players..."
-                                value={playerSearch}
-                                onChange={(e) => setPlayerSearch(e.target.value)}
-                                className="w-full mb-2 bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
-                            />
-
-                            {/* Show Merged Toggle */}
-                            <div className="flex items-center gap-2 mb-2">
-                                <input
-                                    type="checkbox"
-                                    id="show-merged"
-                                    checked={showMerged}
-                                    onChange={(e) => setShowMerged(e.target.checked)}
-                                    className="rounded bg-gray-800 border-gray-700 text-red-500 focus:ring-red-500/20"
-                                />
-                                <label htmlFor="show-merged" className="text-xs text-gray-400 cursor-pointer select-none">
-                                    Show Merged Players
-                                </label>
-                            </div>
-
-                            {/* Player List */}
-                            <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
-                                {displayedPlayers.map(player => (
-                                    <button
-                                        key={player.puuid}
-                                        onClick={() => {
-                                            if (player.mergedToPuuid) {
-                                                setEditingPlayer(player);
-                                            } else {
-                                                handleMultiSelect('players', selectedPlayers, player.puuid, setSelectedPlayers);
-                                            }
-                                        }}
-                                        className={`group relative px-3 py-1 text-xs rounded border transition-colors pr-8 ${player.mergedToPuuid
-                                            ? 'bg-gray-800/50 border-gray-700 text-gray-500 hover:border-gray-600'
-                                            : selectedPlayers.includes(player.puuid)
-                                                ? 'bg-green-500/20 border-green-500 text-green-400'
-                                                : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
-                                            }`}
-                                    >
-                                        {player.name} <span className="text-gray-600">#{player.tag}</span>
-                                        {player.matchCount && (
-                                            <span className="ml-1 text-[10px] bg-gray-700 px-1 rounded">
-                                                {player.matchCount}
-                                            </span>
-                                        )}
-                                        {player.mergedToPuuid && (
-                                            <span className="ml-1 text-[10px] text-yellow-500 bg-yellow-500/10 px-1 rounded border border-yellow-500/20">
-                                                Merged
-                                            </span>
-                                        )}
-
-                                        {/* Settings Button */}
-                                        <div
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setEditingPlayer(player);
-                                            }}
-                                            className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            <Settings className="w-3 h-3" />
-                                        </div>
-                                    </button>
-                                ))}
-                                {filteredPlayers.length === 0 && (
-                                    <div className="text-sm text-gray-500 py-2">No players found</div>
-                                )}
-                            </div>
-
-                            {/* Expand/Collapse Button */}
-                            {playerSearch === '' && filteredPlayers.length > PLAYERS_LIMIT && (
-                                <button
-                                    onClick={() => setShowAllPlayers(!showAllPlayers)}
-                                    className="mt-2 text-xs text-blue-400 hover:text-blue-300 underline"
-                                >
-                                    {showAllPlayers
-                                        ? 'Hide'
-                                        : `Show more (${filteredPlayers.length - PLAYERS_LIMIT})`
-                                    }
-                                </button>
-                            )}
-                        </div>
-
                         {/* Date Filter */}
                         {showDate && (
                             <div className="w-auto">
@@ -469,13 +333,12 @@ export function FilterBar({
                     )}
 
                     {/* Clear Filters */}
-                    {(selectedMaps.length > 0 || selectedAgents.length > 0 || selectedPlayers.length > 0 || selectedOpponents.length > 0 || dateRange.start || dateRange.end || includeTags.length > 0 || excludeTags.length > 0) && (
+                    {(selectedMaps.length > 0 || selectedAgents.length > 0 || selectedOpponents.length > 0 || dateRange.start || dateRange.end || includeTags.length > 0 || excludeTags.length > 0) && (
                         <div className="flex justify-end pt-2">
                             <button
                                 onClick={() => {
                                     setSelectedMaps([]);
                                     setSelectedAgents([]);
-                                    setSelectedPlayers([]);
                                     setSelectedOpponents([]);
                                     setIncludeTags([]);
                                     setExcludeTags([]);
@@ -489,17 +352,6 @@ export function FilterBar({
                         </div>
                     )}
                 </div>
-            )}
-            {editingPlayer && (
-                <PlayerSettingsDialog
-                    player={editingPlayer}
-                    allPlayers={players}
-                    onClose={() => setEditingPlayer(null)}
-                    onUpdate={() => {
-                        // Refresh the page to reflect changes
-                        router.refresh();
-                    }}
-                />
             )}
         </div>
     );
