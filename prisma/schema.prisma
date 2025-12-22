@@ -20,6 +20,9 @@ model Team {
   
   members     TeamMember[]
   matches     Match[]
+  
+  // チームロスター（Valorantプレイヤー、自チーム判定用）
+  rosterPlayers TeamRosterPlayer[]
 }
 
 model TeamMember {
@@ -33,6 +36,20 @@ model TeamMember {
   
   @@unique([teamId, userId])
   @@index([userId])
+}
+
+// チームロスター（Valorantプレイヤー）
+model TeamRosterPlayer {
+  id       String   @id @default(cuid())
+  teamId   String
+  puuid    String
+  addedAt  DateTime @default(now())
+  
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  player   Player   @relation(fields: [puuid], references: [puuid])
+  
+  @@unique([teamId, puuid])
+  @@index([teamId])
 }
 
 // ============================================
@@ -59,6 +76,13 @@ model Match {
   completionState     String?
   platformType        String?
   winningTeam         String?
+  
+  // 自チーム/対戦相手チーム識別
+  myTeamSide          String?  // "Red" | "Blue"
+  redTeamName         String?
+  redTeamTag          String?
+  blueTeamName        String?
+  blueTeamTag         String?
   
   team                Team?     @relation(fields: [teamId], references: [id])
   players             MatchPlayer[]
@@ -91,6 +115,9 @@ model Player {
   mergedToPuuid       String?
   mergedTo            Player?  @relation("PlayerMerges", fields: [mergedToPuuid], references: [puuid])
   mergedFrom          Player[] @relation("PlayerMerges")
+  
+  // チームロスターとのリレーション
+  rosterMemberships   TeamRosterPlayer[]
 }
 
 model MatchPlayer {

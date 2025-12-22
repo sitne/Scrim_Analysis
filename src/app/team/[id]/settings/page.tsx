@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { CopyButton } from '@/components/CopyButton'
 import { DeleteButton } from '@/components/DeleteButton'
+import { RosterManager } from '@/components/RosterManager'
 
 interface PageProps {
     params: Promise<{ id: string }>
@@ -102,6 +103,9 @@ export default async function TeamSettingsPage({ params }: PageProps) {
                     ))}
                 </ul>
             </div>
+
+            {/* Roster Section */}
+            <RosterManager teamId={id} />
 
             {/* Team Stats */}
             <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">

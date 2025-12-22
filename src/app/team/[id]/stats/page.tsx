@@ -61,8 +61,20 @@ export default async function TeamStatsPage(props: PageProps) {
     const startDate = typeof searchParams.startDate === 'string' ? searchParams.startDate : null;
     const endDate = typeof searchParams.endDate === 'string' ? searchParams.endDate : null;
 
-    // 4. チーム単位でデータ取得（重要: teamIdでフィルター）
-    const [mapsData, agentsData, playersData] = await Promise.all([
+    const filterOpponents = typeof searchParams.opponents === 'string' ? searchParams.opponents.split(',') : [];
+
+    // 4. チーム単位でデータ取得
+    const [matchesForOpponentsResult, matchesData, agentsData, playersData] = await Promise.all([
+        prisma.match.findMany({
+            where: { teamId: id },
+            select: {
+                myTeamSide: true,
+                redTeamName: true,
+                redTeamTag: true,
+                blueTeamName: true,
+                blueTeamTag: true
+            } as any
+        }),
         prisma.match.findMany({
             where: { teamId: id },
             select: { mapId: true },
@@ -94,7 +106,35 @@ export default async function TeamStatsPage(props: PageProps) {
         })
     ]);
 
-    const availableMaps = mapsData.map(m => m.mapId).sort((a, b) => getMapDisplayName(a).localeCompare(getMapDisplayName(b)));
+    const matchesForOpponents = matchesForOpponentsResult as any[];
+
+    // Opponent Aggregation
+    const opponentsMap = new Map<string, { name: string; tag: string; count: number }>();
+    matchesForOpponents.forEach(m => {
+        let name, tag;
+        // myTeamSideがnullの場合は判定できないのでスキップ（あるいは両方チェックするなど）
+        // ここではmyTeamSideがある前提で進めるが、自動判定ロジックが動いていれば入るはず
+        if (m.myTeamSide === 'Red') {
+            name = m.blueTeamName;
+            tag = m.blueTeamTag;
+        } else if (m.myTeamSide === 'Blue') {
+            name = m.redTeamName;
+            tag = m.redTeamTag;
+        }
+
+        if (name) {
+            const key = `${name}#${tag || ''}`;
+            if (!opponentsMap.has(key)) {
+                opponentsMap.set(key, { name, tag: tag || '', count: 0 });
+            }
+            opponentsMap.get(key)!.count++;
+        }
+    });
+
+    const availableOpponents = Array.from(opponentsMap.values())
+        .sort((a, b) => b.count - a.count);
+
+    const availableMaps = matchesData.map(m => m.mapId).sort((a, b) => getMapDisplayName(a).localeCompare(getMapDisplayName(b)));
     const availableAgents = agentsData.map(a => a.characterId!).filter(Boolean).sort((a, b) => getAgentName(a).localeCompare(getAgentName(b)));
     const availablePlayers = playersData
         .map(p => ({
@@ -121,6 +161,39 @@ export default async function TeamStatsPage(props: PageProps) {
         whereClause.mapId = { in: filterMaps };
     }
 
+    if (filterOpponents.length > 0) {
+        // Opponent filter logic:
+        // (myTeamSide == 'Red' AND blueTeamName+Tag IN selection) OR (myTeamSide == 'Blue' AND redTeamName+Tag IN selection)
+        // Adjust for tag being optional in search params format "Name#Tag"
+
+        const conditions: any[] = [];
+
+        filterOpponents.forEach(encoded => {
+            const [name, tag] = encoded.split('#');
+            // Condition 1: We are Red, Opponent is Blue
+            conditions.push({
+                AND: [
+                    { myTeamSide: 'Red' },
+                    { blueTeamName: name },
+                    tag ? { blueTeamTag: tag } : {}
+                ]
+            });
+            // Condition 2: We are Blue, Opponent is Red
+            conditions.push({
+                AND: [
+                    { myTeamSide: 'Blue' },
+                    { redTeamName: name },
+                    tag ? { redTeamTag: tag } : {}
+                ]
+            });
+        });
+
+        if (conditions.length > 0) {
+            // @ts-ignore
+            whereClause.OR = conditions;
+        }
+    }
+
     if (startDate || endDate) {
         whereClause.gameStartMillis = {};
         if (startDate) {
@@ -143,17 +216,37 @@ export default async function TeamStatsPage(props: PageProps) {
 
     if (excludeTags.length > 0) {
         if (whereClause.tags) {
-            whereClause.AND = [
-                { tags: whereClause.tags },
-                { tags: { none: { tagName: { in: excludeTags } } } }
-            ];
-            delete whereClause.tags;
+            // whereClause.OR が既にある場合、ANDで結合する必要がある
+            if (whereClause.OR) {
+                whereClause.AND = [
+                    { OR: whereClause.OR },
+                    { tags: whereClause.tags },
+                    { tags: { none: { tagName: { in: excludeTags } } } }
+                ];
+                delete whereClause.OR;
+                delete whereClause.tags;
+            } else {
+                whereClause.AND = [
+                    { tags: whereClause.tags },
+                    { tags: { none: { tagName: { in: excludeTags } } } }
+                ];
+                delete whereClause.tags;
+            }
         } else {
-            whereClause.tags = {
-                none: {
-                    tagName: { in: excludeTags }
-                }
-            };
+            // ORがある場合も考慮
+            if (whereClause.OR) {
+                whereClause.AND = [
+                    { OR: whereClause.OR },
+                    { tags: { none: { tagName: { in: excludeTags } } } }
+                ];
+                delete whereClause.OR;
+            } else {
+                whereClause.tags = {
+                    none: {
+                        tagName: { in: excludeTags }
+                    }
+                };
+            }
         }
     }
 
@@ -205,6 +298,7 @@ export default async function TeamStatsPage(props: PageProps) {
                         maps={availableMaps}
                         agents={availableAgents}
                         players={availablePlayers}
+                        opponents={availableOpponents}
                     />
                 </div>
             </div>

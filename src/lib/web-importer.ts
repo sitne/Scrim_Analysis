@@ -23,6 +23,51 @@ export async function importMatchData(matchData: any, teamId: string) {
 
     // Use transaction for all operations
     await prisma.$transaction(async (tx) => {
+        // チーム名の抽出（premierPrestige.rosterNameから）
+        const redPlayers = matchData.players.filter((p: any) => p.teamId === 'Red');
+        const bluePlayers = matchData.players.filter((p: any) => p.teamId === 'Blue');
+
+        // 各チームのチーム名を取得（最も多いrosterNameを採用）
+        const extractTeamInfo = (players: any[]) => {
+            const rosterNames: Record<string, { name: string; tag: string; count: number }> = {};
+            for (const player of players) {
+                const roster = player.premierPrestige;
+                if (roster?.rosterName && roster?.rosterTag) {
+                    const key = `${roster.rosterName}#${roster.rosterTag}`;
+                    if (!rosterNames[key]) {
+                        rosterNames[key] = { name: roster.rosterName, tag: roster.rosterTag, count: 0 };
+                    }
+                    rosterNames[key].count++;
+                }
+            }
+            // 最も多いチーム名を返す
+            const sorted = Object.values(rosterNames).sort((a, b) => b.count - a.count);
+            return sorted[0] || null;
+        };
+
+        const redTeamInfo = extractTeamInfo(redPlayers);
+        const blueTeamInfo = extractTeamInfo(bluePlayers);
+
+        // 自チーム判定（登録済みロスタープレイヤーと照合）
+        const rosterPlayers = await tx.teamRosterPlayer.findMany({
+            where: { teamId },
+            select: { puuid: true }
+        });
+        const rosterPuuids = new Set(rosterPlayers.map(r => r.puuid));
+
+        let myTeamSide: string | null = null;
+        if (rosterPuuids.size > 0) {
+            const redMatches = redPlayers.filter((p: any) => rosterPuuids.has(p.subject)).length;
+            const blueMatches = bluePlayers.filter((p: any) => rosterPuuids.has(p.subject)).length;
+
+            if (redMatches > blueMatches) {
+                myTeamSide = 'Red';
+            } else if (blueMatches > redMatches) {
+                myTeamSide = 'Blue';
+            }
+            // 同数の場合はnull（後で手動設定）
+        }
+
         // 1. Create Match
         const matchInfo = matchData.matchInfo;
         await tx.match.create({
@@ -55,6 +100,12 @@ export async function importMatchData(matchData: any, teamId: string) {
                     if (blueWins > redWins) return 'Blue';
                     return 'Draw';
                 })(),
+                // 新規追加: チーム識別情報
+                myTeamSide,
+                redTeamName: redTeamInfo?.name || null,
+                redTeamTag: redTeamInfo?.tag || null,
+                blueTeamName: blueTeamInfo?.name || null,
+                blueTeamTag: blueTeamInfo?.tag || null,
             },
         });
 

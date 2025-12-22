@@ -8,6 +8,22 @@ interface PageProps {
     params: Promise<{ id: string }>
 }
 
+interface PlayerInfo {
+    puuid: string
+    gameName: string
+    tagLine: string
+    teamId: string // "Red" | "Blue"
+}
+
+interface ParsedMatch {
+    matchId: string
+    mapId: string
+    redPlayers: PlayerInfo[]
+    bluePlayers: PlayerInfo[]
+    redTeamName?: string
+    blueTeamName?: string
+}
+
 export default function TeamUploadPage({ params }: PageProps) {
     const [teamId, setTeamId] = useState<string>('')
     const [teamName, setTeamName] = useState<string>('')
@@ -18,10 +34,17 @@ export default function TeamUploadPage({ params }: PageProps) {
     const [dragActive, setDragActive] = useState(false)
     const router = useRouter()
 
+    // ロスター設定関連
+    const [hasRoster, setHasRoster] = useState<boolean | null>(null)
+    const [showRosterSetup, setShowRosterSetup] = useState(false)
+    const [parsedMatch, setParsedMatch] = useState<ParsedMatch | null>(null)
+    const [selectedTeam, setSelectedTeam] = useState<'Red' | 'Blue' | null>(null)
+    const [settingUpRoster, setSettingUpRoster] = useState(false)
+
     useEffect(() => {
         params.then(({ id }) => {
             setTeamId(id)
-            // Fetch team info
+            // Fetch team info and roster status
             fetch(`/api/team/${id}`)
                 .then(res => res.json())
                 .then(data => {
@@ -30,6 +53,14 @@ export default function TeamUploadPage({ params }: PageProps) {
                     }
                 })
                 .catch(console.error)
+
+            // Check if roster is set
+            fetch(`/api/team/${id}/roster`)
+                .then(res => res.json())
+                .then(data => {
+                    setHasRoster(Array.isArray(data) && data.length > 0)
+                })
+                .catch(() => setHasRoster(false))
         })
     }, [params])
 
@@ -51,23 +82,105 @@ export default function TeamUploadPage({ params }: PageProps) {
         const droppedFiles = Array.from(e.dataTransfer.files).filter(
             file => file.name.endsWith('.json')
         )
-        setFiles(prev => [...prev, ...droppedFiles])
-    }, [])
+        handleFilesSelected(droppedFiles)
+    }, [hasRoster])
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const selectedFiles = Array.from(e.target.files).filter(
                 file => file.name.endsWith('.json')
             )
-            setFiles(prev => [...prev, ...selectedFiles])
+            handleFilesSelected(selectedFiles)
         }
+    }
+
+    const handleFilesSelected = async (newFiles: File[]) => {
+        // ロスター未設定の場合、最初のファイルを解析してチーム選択を表示
+        if (!hasRoster && newFiles.length > 0) {
+            try {
+                const content = await newFiles[0].text()
+                const matchData = JSON.parse(content)
+
+                const redPlayers: PlayerInfo[] = []
+                const bluePlayers: PlayerInfo[] = []
+                let redTeamName = ''
+                let blueTeamName = ''
+
+                for (const player of matchData.players || []) {
+                    const info: PlayerInfo = {
+                        puuid: player.subject,
+                        gameName: player.gameName,
+                        tagLine: player.tagLine,
+                        teamId: player.teamId
+                    }
+                    if (player.teamId === 'Red') {
+                        redPlayers.push(info)
+                        if (!redTeamName && player.premierPrestige?.rosterName) {
+                            redTeamName = player.premierPrestige.rosterName
+                        }
+                    } else if (player.teamId === 'Blue') {
+                        bluePlayers.push(info)
+                        if (!blueTeamName && player.premierPrestige?.rosterName) {
+                            blueTeamName = player.premierPrestige.rosterName
+                        }
+                    }
+                }
+
+                setParsedMatch({
+                    matchId: matchData.matchInfo?.matchId || 'unknown',
+                    mapId: matchData.matchInfo?.mapId || 'unknown',
+                    redPlayers,
+                    bluePlayers,
+                    redTeamName: redTeamName || undefined,
+                    blueTeamName: blueTeamName || undefined
+                })
+                setShowRosterSetup(true)
+            } catch (err) {
+                console.error('Failed to parse match for roster setup:', err)
+            }
+        }
+
+        setFiles(prev => [...prev, ...newFiles])
     }
 
     const removeFile = (index: number) => {
         setFiles(prev => prev.filter((_, i) => i !== index))
     }
 
-    const handleUpload = async () => {
+    const handleRosterSetup = async () => {
+        if (!selectedTeam || !parsedMatch || !teamId) return
+
+        setSettingUpRoster(true)
+        const selectedPlayers = selectedTeam === 'Red'
+            ? parsedMatch.redPlayers
+            : parsedMatch.bluePlayers
+
+        try {
+            const response = await fetch(`/api/team/${teamId}/roster`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    puuids: selectedPlayers.map(p => p.puuid)
+                })
+            })
+
+            if (response.ok) {
+                setHasRoster(true)
+                setShowRosterSetup(false)
+                // 続けてアップロードを実行
+                handleUploadInternal()
+            } else {
+                const data = await response.json()
+                setError(data.error || 'ロスター設定に失敗しました')
+            }
+        } catch (err) {
+            setError('ロスター設定に失敗しました')
+        } finally {
+            setSettingUpRoster(false)
+        }
+    }
+
+    const handleUploadInternal = async () => {
         if (files.length === 0 || !teamId) return
 
         setUploading(true)
@@ -116,6 +229,123 @@ export default function TeamUploadPage({ params }: PageProps) {
         }
     }
 
+    const handleUpload = async () => {
+        // ロスター未設定でセットアップ画面表示中の場合
+        if (showRosterSetup) {
+            await handleRosterSetup()
+            return
+        }
+
+        await handleUploadInternal()
+    }
+
+    // ロスター選択画面
+    if (showRosterSetup && parsedMatch) {
+        return (
+            <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                    <Link href={`/team/${teamId}`} className="text-gray-400 hover:text-white transition">
+                        ← {teamName || 'チーム'}
+                    </Link>
+                </div>
+
+                <h1 className="text-3xl font-bold text-white">チームメンバーを登録</h1>
+                <p className="text-gray-400">
+                    このマッチで自分のチームはどちらですか？選択したチームのプレイヤーが「自チーム」として登録されます。
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Red Team */}
+                    <button
+                        onClick={() => setSelectedTeam('Red')}
+                        className={`p-6 rounded-xl border-2 transition text-left ${selectedTeam === 'Red'
+                                ? 'border-red-500 bg-red-500/20'
+                                : 'border-gray-700 bg-gray-900 hover:border-red-500/50'
+                            }`}
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-bold text-red-400">
+                                {parsedMatch.redTeamName || 'Red Team'}
+                            </h3>
+                            {selectedTeam === 'Red' && (
+                                <span className="text-green-400">✓ 選択中</span>
+                            )}
+                        </div>
+                        <ul className="space-y-2">
+                            {parsedMatch.redPlayers.map(player => (
+                                <li key={player.puuid} className="text-sm text-gray-300">
+                                    {player.gameName} <span className="text-gray-500">#{player.tagLine}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </button>
+
+                    {/* Blue Team */}
+                    <button
+                        onClick={() => setSelectedTeam('Blue')}
+                        className={`p-6 rounded-xl border-2 transition text-left ${selectedTeam === 'Blue'
+                                ? 'border-blue-500 bg-blue-500/20'
+                                : 'border-gray-700 bg-gray-900 hover:border-blue-500/50'
+                            }`}
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-bold text-blue-400">
+                                {parsedMatch.blueTeamName || 'Blue Team'}
+                            </h3>
+                            {selectedTeam === 'Blue' && (
+                                <span className="text-green-400">✓ 選択中</span>
+                            )}
+                        </div>
+                        <ul className="space-y-2">
+                            {parsedMatch.bluePlayers.map(player => (
+                                <li key={player.puuid} className="text-sm text-gray-300">
+                                    {player.gameName} <span className="text-gray-500">#{player.tagLine}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </button>
+                </div>
+
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500 text-red-400 px-4 py-3 rounded-lg text-sm">
+                        {error}
+                    </div>
+                )}
+
+                <div className="flex gap-4">
+                    <button
+                        onClick={() => {
+                            setShowRosterSetup(false)
+                            setFiles([])
+                            setParsedMatch(null)
+                            setSelectedTeam(null)
+                        }}
+                        className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition"
+                    >
+                        キャンセル
+                    </button>
+                    <button
+                        onClick={handleRosterSetup}
+                        disabled={!selectedTeam || settingUpRoster}
+                        className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-medium rounded-lg transition flex items-center justify-center"
+                    >
+                        {settingUpRoster ? (
+                            <>
+                                <svg className="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                設定中...
+                            </>
+                        ) : (
+                            `登録して${files.length}ファイルをアップロード`
+                        )}
+                    </button>
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-4">
@@ -125,6 +355,12 @@ export default function TeamUploadPage({ params }: PageProps) {
             </div>
 
             <h1 className="text-3xl font-bold text-white">マッチデータアップロード</h1>
+
+            {hasRoster === false && (
+                <div className="bg-yellow-500/10 border border-yellow-500/50 text-yellow-400 px-4 py-3 rounded-lg text-sm">
+                    ⚠️ チームメンバーが未登録です。最初のマッチをアップロードすると、自チームを選択できます。
+                </div>
+            )}
 
             <div
                 className={`border-2 border-dashed rounded-xl p-12 text-center transition ${dragActive
@@ -175,7 +411,7 @@ export default function TeamUploadPage({ params }: PageProps) {
                 </div>
             )}
 
-            {files.length > 0 && (
+            {files.length > 0 && !showRosterSetup && (
                 <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
                     <h3 className="text-sm font-medium text-gray-300 mb-3">
                         選択されたファイル ({files.length})

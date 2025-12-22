@@ -13,6 +13,7 @@ interface FilterBarProps {
     showMaps?: boolean;
     showAgents?: boolean;
     showDate?: boolean;
+    opponents?: { name: string; tag: string; count: number }[];
 }
 
 export function FilterBar({
@@ -21,7 +22,8 @@ export function FilterBar({
     players,
     showMaps = true,
     showAgents = true,
-    showDate = true
+    showDate = true,
+    opponents = []
 }: FilterBarProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -34,6 +36,7 @@ export function FilterBar({
     const [selectedMaps, setSelectedMaps] = useState<string[]>([]);
     const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
     const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
+    const [selectedOpponents, setSelectedOpponents] = useState<{ name: string; tag: string }[]>([]);
     const [dateRange, setDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
     const [playerSearch, setPlayerSearch] = useState<string>('');
     const [availableTags, setAvailableTags] = useState<string[]>([]);
@@ -49,6 +52,14 @@ export function FilterBar({
         setSelectedPlayers(searchParams.get('players')?.split(',').filter(Boolean) || []);
         setIncludeTags(searchParams.get('includeTags')?.split(',').filter(Boolean) || []);
         setExcludeTags(searchParams.get('excludeTags')?.split(',').filter(Boolean) || []);
+
+        const rawOpponents = searchParams.get('opponents')?.split(',').filter(Boolean) || [];
+        const parsedOpponents = rawOpponents.map(o => {
+            const [name, tag] = o.split('#');
+            return { name, tag };
+        });
+        setSelectedOpponents(parsedOpponents);
+
         setDateRange({
             start: searchParams.get('startDate') || '',
             end: searchParams.get('endDate') || ''
@@ -95,6 +106,22 @@ export function FilterBar({
         updateFilters({ [key]: newSelection.join(',') });
     };
 
+    const handleOpponentSelect = (name: string, tag: string) => {
+        const value = `${name}#${tag}`;
+        const isSelected = selectedOpponents.some(o => o.name === name && o.tag === tag);
+
+        let newSelection;
+        if (isSelected) {
+            newSelection = selectedOpponents.filter(o => o.name !== name || o.tag !== tag);
+        } else {
+            newSelection = [...selectedOpponents, { name, tag }];
+        }
+
+        setSelectedOpponents(newSelection);
+        const encoded = newSelection.map(o => `${o.name}#${o.tag}`).join(',');
+        updateFilters({ opponents: encoded });
+    }
+
     const handleDateChange = (type: 'start' | 'end', value: string) => {
         const newRange = { ...dateRange, [type]: value };
         setDateRange(newRange);
@@ -131,7 +158,7 @@ export function FilterBar({
         .map(p => p.name);
 
     // Count active filters
-    const activeFilterCount = selectedMaps.length + selectedAgents.length + includeTags.length + excludeTags.length + (dateRange.start ? 1 : 0) + (dateRange.end ? 1 : 0);
+    const activeFilterCount = selectedMaps.length + selectedAgents.length + includeTags.length + excludeTags.length + selectedOpponents.length + (dateRange.start ? 1 : 0) + (dateRange.end ? 1 : 0);
 
     return (
         <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
@@ -155,6 +182,11 @@ export function FilterBar({
                             {selectedMaps.length > 0 && selectedMaps.map(mapId => (
                                 <span key={mapId} className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">
                                     {getMapDisplayName(mapId)}
+                                </span>
+                            ))}
+                            {selectedOpponents.length > 0 && selectedOpponents.map(t => (
+                                <span key={`${t.name}#${t.tag}`} className="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded">
+                                    VS {t.name}
                                 </span>
                             ))}
                             {selectedAgents.length > 0 && selectedAgents.map(agentId => (
@@ -235,6 +267,30 @@ export function FilterBar({
                                                 }`}
                                         >
                                             {getAgentName(agentId)}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Opponents Filter */}
+                        {opponents.length > 0 && (
+                            <div className="flex-1 min-w-[200px]">
+                                <label className="block text-xs text-gray-400 mb-1 font-semibold">OPPONENTS</label>
+                                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                                    {opponents.map(t => (
+                                        <button
+                                            key={`${t.name}#${t.tag}`}
+                                            onClick={() => handleOpponentSelect(t.name, t.tag)}
+                                            className={`px-3 py-1 text-xs rounded border transition-colors ${selectedOpponents.some(o => o.name === t.name && o.tag === t.tag)
+                                                    ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400'
+                                                    : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
+                                                }`}
+                                        >
+                                            {t.name}
+                                            <span className="ml-1 text-[10px] bg-gray-700 px-1 rounded">
+                                                {t.count}
+                                            </span>
                                         </button>
                                     ))}
                                 </div>
@@ -413,13 +469,14 @@ export function FilterBar({
                     )}
 
                     {/* Clear Filters */}
-                    {(selectedMaps.length > 0 || selectedAgents.length > 0 || selectedPlayers.length > 0 || dateRange.start || dateRange.end || includeTags.length > 0 || excludeTags.length > 0) && (
+                    {(selectedMaps.length > 0 || selectedAgents.length > 0 || selectedPlayers.length > 0 || selectedOpponents.length > 0 || dateRange.start || dateRange.end || includeTags.length > 0 || excludeTags.length > 0) && (
                         <div className="flex justify-end pt-2">
                             <button
                                 onClick={() => {
                                     setSelectedMaps([]);
                                     setSelectedAgents([]);
                                     setSelectedPlayers([]);
+                                    setSelectedOpponents([]);
                                     setIncludeTags([]);
                                     setExcludeTags([]);
                                     setDateRange({ start: '', end: '' });

@@ -107,6 +107,17 @@ export default async function MatchPage(props: MatchPageProps) {
         ? new Date(gameStartMillis)
         : new Date();
 
+    // チーム名表示ロジック
+    // @ts-ignore
+    const isRedMyTeam = match.myTeamSide === 'Red';
+    // @ts-ignore
+    const isBlueMyTeam = match.myTeamSide === 'Blue';
+
+    // @ts-ignore
+    const redDisplayName = match.redTeamName || 'Red Team';
+    // @ts-ignore
+    const blueDisplayName = match.blueTeamName || 'Blue Team';
+
     return (
         <div className="space-y-8">
             {/* Back Link */}
@@ -139,7 +150,10 @@ export default async function MatchPage(props: MatchPageProps) {
                             </span>
                         </div>
                         <p className="text-sm text-gray-400 mt-2">
-                            勝者: {redRounds > blueRounds ? 'Red Team' : 'Blue Team'}
+                            {redRounds > blueRounds
+                                ? <span className="text-red-400 font-bold">{redDisplayName} WIN</span>
+                                : <span className="text-blue-400 font-bold">{blueDisplayName} WIN</span>
+                            }
                         </p>
                         <div className="mt-4">
                             <DeleteButton
@@ -156,7 +170,10 @@ export default async function MatchPage(props: MatchPageProps) {
 
             {/* Scoreboard - Red Team */}
             <div className="space-y-4">
-                <h2 className="text-2xl font-bold text-red-500">Red Team</h2>
+                <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-red-500">{redDisplayName}</h2>
+                    {isRedMyTeam && <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded border border-red-500/30">YOUR TEAM</span>}
+                </div>
                 <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full">
@@ -179,7 +196,7 @@ export default async function MatchPage(props: MatchPageProps) {
                                 {redTeam.sort((a, b) => (b.score || 0) - (a.score || 0)).map(p => {
                                     const { fk, fd } = calculateFKFD(match as any, p.puuid);
                                     return (
-                                        <tr key={p.puuid} className="hover:bg-gray-800/50 transition-colors">
+                                        <tr key={p.puuid} className={`hover:bg-gray-800/50 transition-colors ${isRedMyTeam ? 'bg-red-900/10' : ''}`}>
                                             <td className="px-4 py-3 text-white">
                                                 <div className="flex items-center gap-3">
                                                     {p.characterId && (
@@ -227,7 +244,10 @@ export default async function MatchPage(props: MatchPageProps) {
 
             {/* Scoreboard - Blue Team */}
             <div className="space-y-4">
-                <h2 className="text-2xl font-bold text-blue-500">Blue Team</h2>
+                <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-blue-500">{blueDisplayName}</h2>
+                    {isBlueMyTeam && <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded border border-blue-500/30">YOUR TEAM</span>}
+                </div>
                 <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full">
@@ -250,7 +270,7 @@ export default async function MatchPage(props: MatchPageProps) {
                                 {blueTeam.sort((a, b) => (b.score || 0) - (a.score || 0)).map(p => {
                                     const { fk, fd } = calculateFKFD(match as any, p.puuid);
                                     return (
-                                        <tr key={p.puuid} className="hover:bg-gray-800/50 transition-colors">
+                                        <tr key={p.puuid} className={`hover:bg-gray-800/50 transition-colors ${isBlueMyTeam ? 'bg-blue-900/10' : ''}`}>
                                             <td className="px-4 py-3 text-white">
                                                 <div className="flex items-center gap-3">
                                                     {p.characterId && (
