@@ -72,20 +72,36 @@ export async function POST(request: Request, { params }: RouteProps) {
         return NextResponse.json({ error: 'チームのメンバーではありません' }, { status: 403 })
     }
 
-    const { puuids } = await request.json()
+    const { puuids, players } = await request.json()
 
-    if (!Array.isArray(puuids) || puuids.length === 0) {
-        return NextResponse.json({ error: 'puuidsが必要です' }, { status: 400 })
+    // 新しい形式（playersオブジェクト配列）または古い形式（puuids配列）の両方をサポート
+    const targetPlayers = players || (puuids || []).map((puuid: string) => ({ puuid }))
+
+    if (!Array.isArray(targetPlayers) || targetPlayers.length === 0) {
+        return NextResponse.json({ error: 'playersまたはpuuidsが必要です' }, { status: 400 })
     }
 
-    // Add players to roster (skip existing)
+    // 1. プレイヤーをUpsert (gameName, tagLineがある場合のみ)
+    for (const p of targetPlayers) {
+        if (p.puuid && p.gameName && p.tagLine) {
+            await prisma.player.upsert({
+                where: { puuid: p.puuid },
+                update: { gameName: p.gameName, tagLine: p.tagLine },
+                create: { puuid: p.puuid, gameName: p.gameName, tagLine: p.tagLine }
+            })
+        }
+    }
+
+    const targetPuuids = targetPlayers.map((p: any) => p.puuid).filter(Boolean)
+
+    // 2. Add players to roster (skip existing)
     const existingRoster = await prisma.teamRosterPlayer.findMany({
         where: { teamId: id },
         select: { puuid: true }
     })
     const existingPuuids = new Set(existingRoster.map(r => r.puuid))
 
-    const newPuuids = puuids.filter((p: string) => !existingPuuids.has(p))
+    const newPuuids = targetPuuids.filter((p: string) => !existingPuuids.has(p))
 
     if (newPuuids.length > 0) {
         await prisma.teamRosterPlayer.createMany({

@@ -160,7 +160,11 @@ export default function TeamUploadPage({ params }: PageProps) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    puuids: selectedPlayers.map(p => p.puuid)
+                    players: selectedPlayers.map(p => ({
+                        puuid: p.puuid,
+                        gameName: p.gameName,
+                        tagLine: p.tagLine
+                    }))
                 })
             })
 
@@ -259,8 +263,8 @@ export default function TeamUploadPage({ params }: PageProps) {
                     <button
                         onClick={() => setSelectedTeam('Red')}
                         className={`p-6 rounded-xl border-2 transition text-left ${selectedTeam === 'Red'
-                                ? 'border-red-500 bg-red-500/20'
-                                : 'border-gray-700 bg-gray-900 hover:border-red-500/50'
+                            ? 'border-red-500 bg-red-500/20'
+                            : 'border-gray-700 bg-gray-900 hover:border-red-500/50'
                             }`}
                     >
                         <div className="flex items-center justify-between mb-4">
@@ -284,8 +288,8 @@ export default function TeamUploadPage({ params }: PageProps) {
                     <button
                         onClick={() => setSelectedTeam('Blue')}
                         className={`p-6 rounded-xl border-2 transition text-left ${selectedTeam === 'Blue'
-                                ? 'border-blue-500 bg-blue-500/20'
-                                : 'border-gray-700 bg-gray-900 hover:border-blue-500/50'
+                            ? 'border-blue-500 bg-blue-500/20'
+                            : 'border-gray-700 bg-gray-900 hover:border-blue-500/50'
                             }`}
                     >
                         <div className="flex items-center justify-between mb-4">
