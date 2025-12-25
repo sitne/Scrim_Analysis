@@ -68,6 +68,14 @@ export function MatchHeatmap({ mapId, points }: MatchHeatmapProps) {
             canvas.width = width;
             canvas.height = height;
 
+            // Apply display rotation to the entire context
+            ctx.save();
+            if (mapConfig.displayRotation !== 0) {
+                ctx.translate(width / 2, height / 2);
+                ctx.rotate((mapConfig.displayRotation * Math.PI) / 180);
+                ctx.translate(-width / 2, -height / 2);
+            }
+
             // Draw map image
             if (mapConfig.rotation !== 0) {
                 ctx.save();
@@ -96,7 +104,10 @@ export function MatchHeatmap({ mapId, points }: MatchHeatmapProps) {
             heatmapCanvas.width = width;
             heatmapCanvas.height = height;
             const heatmapCtx = heatmapCanvas.getContext('2d');
-            if (!heatmapCtx) return;
+            if (!heatmapCtx) {
+                ctx.restore();
+                return;
+            }
 
             const imageData = heatmapCtx.createImageData(width, height);
             const data = imageData.data;
@@ -128,19 +139,19 @@ export function MatchHeatmap({ mapId, points }: MatchHeatmapProps) {
                         // Red scheme (existing)
                         if (heatValue < 0.25) {
                             b = Math.floor(255 * (heatValue / 0.25));
-                            a = Math.floor(heatValue * 200);
-                        } else if (heatValue < 0.5) {
-                            b = Math.floor(255 * (1 - (heatValue - 0.25) / 0.25));
-                            g = Math.floor(255 * ((heatValue - 0.25) / 0.25));
-                            a = Math.floor(heatValue * 220);
-                        } else if (heatValue < 0.75) {
-                            g = 255;
-                            r = Math.floor(255 * ((heatValue - 0.5) / 0.25));
-                            a = Math.floor(heatValue * 240);
-                        } else {
-                            r = 255;
-                            g = Math.floor(255 * (1 - (heatValue - 0.75) / 0.25));
-                            a = Math.floor(Math.min(heatValue * 250, 255));
+                            // a = Math.floor(heatValue * 200);
+                            // } else if (heatValue < 0.5) {
+                            //     b = Math.floor(255 * (1 - (heatValue - 0.25) / 0.25));
+                            //     g = Math.floor(255 * ((heatValue - 0.25) / 0.25));
+                            //     a = Math.floor(heatValue * 220);
+                            // } else if (heatValue < 0.75) {
+                            //     g = 255;
+                            //     r = Math.floor(255 * ((heatValue - 0.5) / 0.25));
+                            //     a = Math.floor(heatValue * 240);
+                            // } else {
+                            //     r = 255;
+                            //     g = Math.floor(255 * (1 - (heatValue - 0.75) / 0.25));
+                            //     a = Math.floor(Math.min(heatValue * 250, 255));
                         }
                     } else if (activeTab === 'kill') {
                         // Green scheme
@@ -188,6 +199,9 @@ export function MatchHeatmap({ mapId, points }: MatchHeatmapProps) {
                 ctx.lineWidth = 2;
                 ctx.stroke();
             }
+
+            // Restore after all drawing is done (with display rotation)
+            ctx.restore();
         }
     }, [mapConfig, filteredPoints, activeTab]);
 
@@ -235,7 +249,7 @@ export function MatchHeatmap({ mapId, points }: MatchHeatmapProps) {
                 </div>
             </div>
 
-            <div ref={containerRef} className="relative w-full">
+            <div ref={containerRef} className="relative w-full max-w-3xl mx-auto">
                 <canvas
                     ref={canvasRef}
                     className="w-full border border-gray-700 rounded-lg bg-gray-800"

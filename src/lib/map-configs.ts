@@ -4,7 +4,8 @@ export interface MapData {
     xScalarToAdd: number;
     yScalarToAdd: number;
     imagePath: string;
-    rotation: number; // 角度（度数法）
+    rotation: number; // 座標調整用の回転（度数法）
+    displayRotation: number; // 表示向き調整用の回転（度数法）
 }
 
 export const MAP_CONFIGS: Record<string, MapData> = {
@@ -15,6 +16,7 @@ export const MAP_CONFIGS: Record<string, MapData> = {
         yScalarToAdd: 0.5,
         imagePath: '/maps/sunset.png',
         rotation: 180,
+        displayRotation: 270,
     },
     '/Game/Maps/Ascent/Ascent': {
         xMultiplier: 0.00007,
@@ -23,6 +25,7 @@ export const MAP_CONFIGS: Record<string, MapData> = {
         yScalarToAdd: 0.573242,
         imagePath: '/maps/ascent.png',
         rotation: 0,
+        displayRotation: 0,
     },
     '/Game/Maps/Infinity/Infinity': {
         xMultiplier: 0.000081,
@@ -31,6 +34,7 @@ export const MAP_CONFIGS: Record<string, MapData> = {
         yScalarToAdd: 0.5,
         imagePath: '/maps/abyss.png',
         rotation: 0,
+        displayRotation: 0,
     },
     '/Game/Maps/Triad/Triad': {
         xMultiplier: 0.000075,
@@ -39,6 +43,7 @@ export const MAP_CONFIGS: Record<string, MapData> = {
         yScalarToAdd: 0.642728,
         imagePath: '/maps/haven.png',
         rotation: 0,
+        displayRotation: 0,
     },
     '/Game/Maps/Bonsai/Bonsai': {
         xMultiplier: 0.000078,
@@ -47,6 +52,7 @@ export const MAP_CONFIGS: Record<string, MapData> = {
         yScalarToAdd: 0.697578,
         imagePath: '/maps/split.png',
         rotation: 0,
+        displayRotation: 0,
     },
     '/Game/Maps/Canyon/Canyon': {
         xMultiplier: 0.000078,
@@ -55,6 +61,7 @@ export const MAP_CONFIGS: Record<string, MapData> = {
         yScalarToAdd: 1.155886,
         imagePath: '/maps/fracture.png',
         rotation: 0,
+        displayRotation: 0,
     },
     '/Game/Maps/Duality/Duality': {
         xMultiplier: 0.000059,
@@ -63,6 +70,7 @@ export const MAP_CONFIGS: Record<string, MapData> = {
         yScalarToAdd: 0.967566,
         imagePath: '/maps/bind.png',
         rotation: 0,
+        displayRotation: 0,
     },
     '/Game/Maps/Pitt/Pitt': {
         xMultiplier: 0.000078,
@@ -71,6 +79,7 @@ export const MAP_CONFIGS: Record<string, MapData> = {
         yScalarToAdd: 0.916016,
         imagePath: '/maps/pearl.png',
         rotation: 0,
+        displayRotation: 0,
     },
     '/Game/Maps/Jam/Jam': {
         xMultiplier: 0.000072,
@@ -79,5 +88,6 @@ export const MAP_CONFIGS: Record<string, MapData> = {
         yScalarToAdd: 0.917752,
         imagePath: '/maps/lotus.png',
         rotation: 0,
+        displayRotation: 0,
     },
 };

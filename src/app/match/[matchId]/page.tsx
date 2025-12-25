@@ -345,7 +345,7 @@ export default async function MatchPage(props: MatchPageProps) {
                     points={[
                         // Plant locations
                         ...match.rounds
-                            .filter(r => r.plantLocationX !== null && r.plantLocationY !== null)
+                            .filter(r => r.plantLocationX !== null && r.plantLocationY !== null && r.bombPlanter !== null)
                             .map(r => ({
                                 x: r.plantLocationX || 0,
                                 y: r.plantLocationY || 0,
