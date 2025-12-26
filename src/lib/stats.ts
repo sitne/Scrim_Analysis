@@ -234,9 +234,19 @@ export function calculateStats(
             }
         }
 
+        // Pre-group kills by round for efficiency
+        const killsByRound = new Map<number, typeof match.kills>();
+        match.kills.forEach(k => {
+            if (k.roundNum === null) return;
+            if (!killsByRound.has(k.roundNum)) killsByRound.set(k.roundNum, []);
+            killsByRound.get(k.roundNum)!.push(k);
+        });
+
         // Round Analysis (Only if My Team is identified)
         if (myTeamSide) {
             match.rounds.forEach(round => {
+                const roundKills = (killsByRound.get(round.roundNum) || [])
+                    .sort((a, b) => (a.roundTime || 0) - (b.roundTime || 0));
                 const isRed = myTeamSide === 'Red';
                 const isFirstHalfSide = (round.roundNum < 12) || (round.roundNum >= 24 && (round.roundNum - 24) % 2 === 0);
                 const currentSide = (isRed === isFirstHalfSide) ? 'Attack' : 'Defense';
@@ -276,11 +286,8 @@ export function calculateStats(
                     } else {
                         let isValidPostPlant = true;
                         if (round.roundResult === 'Eliminated') {
-                            const roundKillsForCheck = match.kills
-                                .filter(k => k.roundNum === round.roundNum)
-                                .sort((a, b) => (a.roundTime || 0) - (b.roundTime || 0));
-                            if (roundKillsForCheck.length > 0) {
-                                const lastKillTime = roundKillsForCheck[roundKillsForCheck.length - 1].roundTime || 0;
+                            if (roundKills.length > 0) {
+                                const lastKillTime = roundKills[roundKills.length - 1].roundTime || 0;
                                 if (round.plantRoundTime && round.plantRoundTime > lastKillTime) {
                                     isValidPostPlant = false;
                                 }
@@ -294,10 +301,6 @@ export function calculateStats(
                 }
 
                 // FK / FD Analysis
-                const roundKills = match.kills
-                    .filter(k => k.roundNum === round.roundNum)
-                    .sort((a, b) => (a.roundTime || 0) - (b.roundTime || 0));
-
                 if (roundKills.length > 0) {
                     const firstKill = roundKills[0];
                     const killerId = firstKill.killerId;
@@ -397,21 +400,17 @@ export const calculateADR = (match: MatchWithDetails, puuid: string, totalRounds
 
 export const calculateHS = (match: MatchWithDetails, puuid: string) => {
     // ショットガンのUUIDリスト
-    const SHOTGUN_UUIDS = [
+    const SHOTGUN_UUIDS = new Set([
         '91038161-4B7C-2150-7061-39B512B3B451', // Bucky
         'EC845555-41DA-72BD-7C95-F396279FD13F', // Judge
         '42DA8CCC-40D5-AFFC-BEEC-15AA47B42EDA', // Shorty
-    ];
-
-    const playerDamageEvents = match.damageEvents.filter((de: any) => {
-        // 対象プレイヤーであり、かつショットガンでないイベントのみを抽出
-        return de.attackerId === puuid && !SHOTGUN_UUIDS.includes(de.weapon || '');
-    });
+    ]);
 
     let totalShots = 0;
     let headshots = 0;
 
-    playerDamageEvents.forEach(de => {
+    match.damageEvents.forEach(de => {
+        if (de.attackerId !== puuid || SHOTGUN_UUIDS.has(de.weapon || '')) return;
         totalShots += ((de.legshots || 0) + (de.bodyshots || 0) + (de.headshots || 0));
         headshots += (de.headshots || 0);
     });
@@ -422,61 +421,71 @@ export const calculateHS = (match: MatchWithDetails, puuid: string) => {
 export const calculateKAST = (match: MatchWithDetails, puuid: string, totalRounds: number) => {
     if (totalRounds === 0) return 0;
 
-    let kastRounds = 0;
+    let kastRoundsCount = 0;
+
+    // Pre-group kills by round for efficiency
+    const killsByRound = new Map<number, typeof match.kills>();
+    match.kills.forEach(k => {
+        if (k.roundNum === null) return;
+        if (!killsByRound.has(k.roundNum)) killsByRound.set(k.roundNum, []);
+        killsByRound.get(k.roundNum)!.push(k);
+    });
 
     match.rounds.forEach(round => {
         const pStats = round.playerStats.find(ps => ps.puuid === puuid);
         if (!pStats) return;
 
+        const roundKills = killsByRound.get(round.roundNum) || [];
+
         // K: Kill
         const gotKill = (pStats.kills || 0) > 0;
 
         // A: Assist
-        const gotAssist = match.kills.some(ke => {
+        const gotAssist = roundKills.some(ke => {
             const assistants = typeof ke.assistants === 'string' ? JSON.parse(ke.assistants) : (ke.assistants || []);
-            return ke.roundNum === round.roundNum && assistants.includes(puuid);
+            return assistants.includes(puuid);
         });
 
-        // S: Survive
-        const died = match.kills.some(ke =>
-            ke.roundNum === round.roundNum && ke.victimId === puuid
-        );
+        // S: Survive (Killed in this round?)
+        const deathEvent = roundKills.find(ke => ke.victimId === puuid);
+        const died = !!deathEvent;
 
         // T: Trade
         let traded = false;
-        if (died) {
-            const deathEvent = match.kills.find(ke =>
-                ke.roundNum === round.roundNum && ke.victimId === puuid
+        if (deathEvent) {
+            const killerId = deathEvent.killerId;
+            const killerDeath = roundKills.find(ke =>
+                ke.victimId === killerId &&
+                ke.roundTime !== null &&
+                deathEvent.roundTime !== null &&
+                ke.roundTime > deathEvent.roundTime &&
+                ke.roundTime <= deathEvent.roundTime + 3000 // 3 seconds trade window
             );
-            if (deathEvent) {
-                const killerId = deathEvent.killerId;
-                const killerDeath = match.kills.find(ke =>
-                    ke.roundNum === round.roundNum &&
-                    ke.victimId === killerId &&
-                    ke.roundTime !== null &&
-                    deathEvent.roundTime !== null &&
-                    ke.roundTime > deathEvent.roundTime &&
-                    ke.roundTime <= deathEvent.roundTime + 3000 // 3 seconds trade window
-                );
-                if (killerDeath) killerDeath && (traded = true);
-            }
+            if (killerDeath) traded = true;
         }
 
         if (gotKill || gotAssist || !died || traded) {
-            kastRounds++;
+            kastRoundsCount++;
         }
     });
 
-    return Math.round((kastRounds / totalRounds) * 100);
+    return Math.round((kastRoundsCount / totalRounds) * 100);
 };
 
 export const calculateFKFD = (match: MatchWithDetails, puuid: string) => {
     let fk = 0;
     let fd = 0;
 
+    // Pre-group kills by round for efficiency
+    const killsByRound = new Map<number, typeof match.kills>();
+    match.kills.forEach(k => {
+        if (k.roundNum === null) return;
+        if (!killsByRound.has(k.roundNum)) killsByRound.set(k.roundNum, []);
+        killsByRound.get(k.roundNum)!.push(k);
+    });
+
     match.rounds.forEach(round => {
-        const roundKills = match.kills
-            .filter(k => k.roundNum === round.roundNum)
+        const roundKills = (killsByRound.get(round.roundNum) || [])
             .sort((a, b) => (a.roundTime || 0) - (b.roundTime || 0));
 
         if (roundKills.length > 0) {

@@ -17,59 +17,53 @@ export default async function TeamHomePage({ params }: PageProps) {
         redirect('/auth/login')
     }
 
-    // Verify user is member of this team
-    const membership = await prisma.teamMember.findUnique({
-        where: {
-            teamId_userId: {
-                teamId: id,
-                userId: user.id,
+    // Parallelize data fetching
+    const [membership, team, matches] = await Promise.all([
+        prisma.teamMember.findUnique({
+            where: {
+                teamId_userId: {
+                    teamId: id,
+                    userId: user.id,
+                },
             },
-        },
-    })
-
-    if (!membership) {
-        redirect('/team')
-    }
-
-    // Get team with matches
-    const team = await prisma.team.findUnique({
-        where: { id },
-        include: {
-            _count: {
-                select: { members: true }
+        }),
+        prisma.team.findUnique({
+            where: { id },
+            include: {
+                _count: {
+                    select: { members: true }
+                }
             }
-        }
-    })
+        }),
+        prisma.match.findMany({
+            where: { teamId: id },
+            take: 20,
+            orderBy: { gameStartMillis: 'desc' },
+            select: {
+                matchId: true,
+                mapId: true,
+                gameStartMillis: true,
+                winningTeam: true,
+                tags: { select: { tagName: true } },
+                _count: { select: { players: true } },
+                rounds: { select: { winningTeam: true } },
+                // @ts-ignore
+                myTeamSide: true,
+                // @ts-ignore
+                redTeamName: true,
+                // @ts-ignore
+                blueTeamName: true,
+                // @ts-ignore
+                redTeamTag: true,
+                // @ts-ignore
+                blueTeamTag: true,
+            }
+        })
+    ])
 
-    if (!team) {
+    if (!membership || !team) {
         redirect('/team')
     }
-
-    // Get matches for this team
-    const matches = await prisma.match.findMany({
-        where: { teamId: id },
-        take: 20,
-        orderBy: { gameStartMillis: 'desc' },
-        select: {
-            matchId: true,
-            mapId: true,
-            gameStartMillis: true,
-            winningTeam: true,
-            tags: { select: { tagName: true } },
-            _count: { select: { players: true } },
-            rounds: { select: { winningTeam: true } },
-            // @ts-ignore
-            myTeamSide: true,
-            // @ts-ignore
-            redTeamName: true,
-            // @ts-ignore
-            blueTeamName: true,
-            // @ts-ignore
-            redTeamTag: true,
-            // @ts-ignore
-            blueTeamTag: true,
-        }
-    })
 
     return (
         <div className="space-y-6">

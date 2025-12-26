@@ -94,6 +94,7 @@ model Match {
   createdAt           DateTime @default(now())
   
   @@index([teamId])
+  @@index([gameStartMillis(sort: Desc)])
 }
 
 model MatchTag {
@@ -197,6 +198,7 @@ model RoundPlayerStats {
   round               Round       @relation(fields: [matchId, roundNum], references: [matchId, roundNum])
   
   @@unique([matchId, roundNum, puuid])
+  @@index([matchId, puuid])
 }
 
 model KillEvent {
@@ -218,6 +220,10 @@ model KillEvent {
   playerLocations     Json?
   
   match               Match    @relation(fields: [matchId], references: [matchId])
+
+  @@index([matchId])
+  @@index([killerId])
+  @@index([victimId])
 }
 
 model DamageEvent {
@@ -233,4 +239,7 @@ model DamageEvent {
   weapon              String?
   
   match               Match    @relation(fields: [matchId], references: [matchId])
+
+  @@index([matchId])
+  @@index([attackerId])
 }

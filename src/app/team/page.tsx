@@ -17,9 +17,11 @@ export default async function TeamPage() {
         include: {
             team: {
                 include: {
-                    members: true,
                     _count: {
-                        select: { matches: true }
+                        select: {
+                            members: true,
+                            matches: true
+                        }
                     }
                 }
             }
@@ -95,7 +97,7 @@ export default async function TeamPage() {
                                             )}
                                         </div>
                                         <div className="flex gap-4 text-sm text-gray-400">
-                                            <span>{team.members.length} メンバー</span>
+                                            <span>{team._count.members} メンバー</span>
                                             <span>{team._count.matches} マッチ</span>
                                         </div>
                                     </div>
