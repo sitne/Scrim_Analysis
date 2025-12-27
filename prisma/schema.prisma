@@ -95,6 +95,9 @@ model Match {
   
   @@index([teamId])
   @@index([gameStartMillis(sort: Desc)])
+  @@index([mapId])
+  @@index([redTeamName])
+  @@index([blueTeamName])
 }
 
 model MatchTag {
@@ -119,6 +122,8 @@ model Player {
   
   // チームロスターとのリレーション
   rosterMemberships   TeamRosterPlayer[]
+
+  @@index([gameName, tagLine])
 }
 
 model MatchPlayer {
@@ -147,6 +152,8 @@ model MatchPlayer {
   roundStats          RoundPlayerStats[]
   
   @@id([matchId, puuid])
+  @@index([puuid])
+  @@index([characterId])
 }
 
 model Round {

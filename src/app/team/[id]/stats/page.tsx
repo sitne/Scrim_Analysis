@@ -214,13 +214,49 @@ export default async function TeamStatsPage(props: PageProps) {
     const matches = await prisma.match.findMany({
         where: whereClause,
         include: {
-            rounds: true,
-            players: {
-                include: {
-                    player: true,
-                },
+            rounds: {
+                select: {
+                    roundNum: true,
+                    winningTeam: true,
+                    roundResult: true,
+                    plantRoundTime: true,
+                }
             },
-            kills: true,
+            players: {
+                select: {
+                    puuid: true,
+                    teamId: true,
+                    characterId: true,
+                    kills: true,
+                    deaths: true,
+                    assists: true,
+                    score: true,
+                    player: {
+                        select: {
+                            gameName: true,
+                            tagLine: true,
+                            alias: true,
+                            mergedToPuuid: true,
+                            mergedTo: {
+                                select: {
+                                    gameName: true,
+                                    tagLine: true,
+                                    alias: true,
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            kills: {
+                select: {
+                    roundNum: true,
+                    roundTime: true,
+                    killerId: true,
+                    victimId: true,
+                    assistants: true,
+                }
+            },
         },
         orderBy: { gameStartMillis: 'desc' }
     }) as MatchWithDetails[];

@@ -126,7 +126,8 @@ export function calculateStats(
             myTeamSide = myTeamPlayer?.teamId || null;
         }
 
-        totalRounds += match.rounds.length;
+        const validRounds = match.rounds.filter(r => r.roundNum < 24);
+        totalRounds += validRounds.length;
 
         // Map Stats
         if (!mapStatsMap.has(match.mapId)) {
@@ -198,7 +199,8 @@ export function calculateStats(
             pStat.deaths += mp.deaths || 0;
             pStat.assists += mp.assists || 0;
             pStat.score += mp.score || 0;
-            pStat.roundsPlayed += match.rounds.length;
+            const matchRoundsCount = match.rounds.filter(r => r.roundNum < 24).length;
+            pStat.roundsPlayed += matchRoundsCount;
 
             // Agent Stats
             if (mp.characterId) {
@@ -244,7 +246,7 @@ export function calculateStats(
 
         // Round Analysis (Only if My Team is identified)
         if (myTeamSide) {
-            match.rounds.forEach(round => {
+            match.rounds.filter(r => r.roundNum < 24).forEach(round => {
                 const roundKills = (killsByRound.get(round.roundNum) || [])
                     .sort((a, b) => (a.roundTime || 0) - (b.roundTime || 0));
                 const isRed = myTeamSide === 'Red';
@@ -393,6 +395,7 @@ export const calculateKD = (kills: number, deaths: number) => {
 export const calculateADR = (match: MatchWithDetails, puuid: string, totalRounds: number) => {
     const totalDamage = match.rounds.reduce((sum, round) => {
         const playerRoundStat = round.playerStats.find(ps => ps.puuid === puuid);
+        if (round.roundNum >= 24) return sum;
         return sum + (playerRoundStat?.damage || 0);
     }, 0);
     return totalRounds > 0 ? Math.round(totalDamage / totalRounds) : 0;
@@ -431,7 +434,7 @@ export const calculateKAST = (match: MatchWithDetails, puuid: string, totalRound
         killsByRound.get(k.roundNum)!.push(k);
     });
 
-    match.rounds.forEach(round => {
+    match.rounds.filter(r => r.roundNum < 24).forEach(round => {
         const pStats = round.playerStats.find(ps => ps.puuid === puuid);
         if (!pStats) return;
 
@@ -484,7 +487,7 @@ export const calculateFKFD = (match: MatchWithDetails, puuid: string) => {
         killsByRound.get(k.roundNum)!.push(k);
     });
 
-    match.rounds.forEach(round => {
+    match.rounds.filter(r => r.roundNum < 24).forEach(round => {
         const roundKills = (killsByRound.get(round.roundNum) || [])
             .sort((a, b) => (a.roundTime || 0) - (b.roundTime || 0));
 

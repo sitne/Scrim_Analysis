@@ -110,7 +110,8 @@ export async function importMatch(filePath: string) {
 
     // 3. Create Rounds and RoundPlayerStats
     if (matchData.roundResults) {
-        for (const round of matchData.roundResults) {
+        const filteredRounds = matchData.roundResults.filter((r: any) => r.roundNum < 24);
+        for (const round of filteredRounds) {
             // Create Round
             await prisma.round.create({
                 data: {
