@@ -220,6 +220,14 @@ export default async function TeamStatsPage(props: PageProps) {
                     winningTeam: true,
                     roundResult: true,
                     plantRoundTime: true,
+                    playerStats: {
+                        select: {
+                            puuid: true,
+                            score: true,
+                            kills: true,
+                            damage: true,
+                        }
+                    }
                 }
             },
             players: {
