@@ -119,83 +119,73 @@ export function FilterBar({
     const activeFilterCount = selectedMaps.length + selectedAgents.length + includeTags.length + excludeTags.length + selectedOpponents.length + (dateRange.start ? 1 : 0) + (dateRange.end ? 1 : 0);
 
     return (
-        <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
-            {/* Collapsed Header / Toggle */}
+        <div className="bg-transparent overflow-hidden"> {/* 背景と枠線を消す */}
+            {/* Header / Toggle */}
             <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-800/50 transition-colors"
+                className="w-full flex items-center justify-between py-3 transition-all group border-b border-white/5 hover:border-red-500/50"
             >
-                <div className="flex items-center gap-3">
-                    <Filter className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm font-semibold text-gray-300">Filter</span>
+                <div className="flex items-center gap-4">
+                    {/* 左側の赤いインジケーター */}
+                    <div className={`w-1 h-5 transition-all ${activeFilterCount > 0 ? 'bg-red-500 shadow-[0_0_10px_#ef4444]' : 'bg-gray-700'}`} />
 
-                    {/* Active filters summary when collapsed */}
+                    <div className="flex items-center gap-2">
+                        <Filter className={`w-4 h-4 ${activeFilterCount > 0 ? 'text-red-500' : 'text-gray-400'}`} />
+                        <span className="text-sm font-black uppercase tracking-[0.2em] text-white">Filter</span>
+                    </div>
+
+                    {/* 折り畳み時のサマリー（チップのデザインをスリム化） */}
                     {isCollapsed && (
-                        <div className="flex items-center gap-2 ml-2 flex-wrap">
-                            {selectedMaps.length > 0 && selectedMaps.map(mapId => (
-                                <span key={mapId} className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">
+                        <div className="flex items-center gap-1.5 ml-4 flex-wrap overflow-hidden h-6">
+                            {selectedMaps.map(mapId => (
+                                <span key={mapId} className="text-[10px] bg-white/10 text-white px-2 py-0.5 rounded-sm border border-white/10 uppercase">
                                     {getMapDisplayName(mapId)}
                                 </span>
                             ))}
-                            {selectedOpponents.length > 0 && selectedOpponents.map(name => (
-                                <span key={name} className="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded">
+                            {selectedOpponents.map(name => (
+                                <span key={name} className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-sm border border-indigo-500/30 uppercase">
                                     VS {name}
                                 </span>
                             ))}
-                            {selectedAgents.length > 0 && selectedAgents.map(agentId => (
-                                <span key={agentId} className="text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded">
+                            {selectedAgents.map(agentId => (
+                                <span key={agentId} className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-sm border border-purple-500/30 uppercase">
                                     {getAgentName(agentId)}
                                 </span>
                             ))}
-                            {includeTags.length > 0 && includeTags.map(tag => (
-                                <span key={`inc-${tag}`} className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">
-                                    +{tag}
-                                </span>
-                            ))}
-                            {excludeTags.length > 0 && excludeTags.map(tag => (
-                                <span key={`exc-${tag}`} className="text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded">
-                                    -{tag}
-                                </span>
-                            ))}
-                            {(dateRange.start || dateRange.end) && (
-                                <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded">
-                                    {dateRange.start || '...'} ~ {dateRange.end || '...'}
-                                </span>
-                            )}
                         </div>
                     )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3 pr-2">
                     {activeFilterCount > 0 && (
-                        <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-bold bg-red-600 text-white px-1.5 py-0.5 rounded-sm">
                             {activeFilterCount}
                         </span>
                     )}
                     {isCollapsed ? (
-                        <ChevronDown className="w-4 h-4 text-gray-400" />
+                        <ChevronDown className="w-4 h-4 text-gray-500 group-hover:text-white transition-colors" />
                     ) : (
-                        <ChevronUp className="w-4 h-4 text-gray-400" />
+                        <ChevronUp className="w-4 h-4 text-red-500 transition-colors" />
                     )}
                 </div>
             </button>
 
             {/* Collapsible Content */}
             {!isCollapsed && (
-                <div className="p-4 border-t border-gray-800 space-y-4">
-                    <div className="flex flex-wrap gap-4">
+                <div className="p-6 bg-black/40 backdrop-blur-md border-x border-b border-white/5 rounded-b-xl space-y-6 mt-2 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Maps Filter */}
                         {showMaps && (
-                            <div className="flex-1 min-w-[200px]">
-                                <label className="block text-xs text-gray-400 mb-1 font-semibold">MAPS</label>
-                                <div className="flex flex-wrap gap-2">
+                            <div className="space-y-3">
+                                <label className="block text-[10px] text-gray-500 font-black tracking-widest uppercase">Maps Selection</label>
+                                <div className="flex flex-wrap gap-1.5">
                                     {maps.map(mapId => (
                                         <button
                                             key={mapId}
                                             onClick={() => handleMultiSelect('maps', selectedMaps, mapId, setSelectedMaps)}
-                                            className={`px-3 py-1 text-xs rounded border transition-colors ${selectedMaps.includes(mapId)
-                                                ? 'bg-red-500/20 border-red-500 text-red-400'
-                                                : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
+                                            className={`px-3 py-1.5 text-[11px] font-bold uppercase transition-all border ${selectedMaps.includes(mapId)
+                                                ? 'bg-red-600 border-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.4)]'
+                                                : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:border-white/20'
                                                 }`}
                                         >
                                             {getMapDisplayName(mapId)}
@@ -207,16 +197,16 @@ export function FilterBar({
 
                         {/* Agents Filter */}
                         {showAgents && (
-                            <div className="flex-1 min-w-[200px]">
-                                <label className="block text-xs text-gray-400 mb-1 font-semibold">AGENTS</label>
-                                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                            <div className="space-y-3">
+                                <label className="block text-[10px] text-gray-400 font-black tracking-widest uppercase">Agent Assets</label>
+                                <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
                                     {agents.map(agentId => (
                                         <button
                                             key={agentId}
                                             onClick={() => handleMultiSelect('agents', selectedAgents, agentId, setSelectedAgents)}
-                                            className={`px-3 py-1 text-xs rounded border transition-colors ${selectedAgents.includes(agentId)
-                                                ? 'bg-red-500/20 border-red-500 text-red-400'
-                                                : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
+                                            className={`px-3 py-1.5 text-[11px] font-bold uppercase transition-all border ${selectedAgents.includes(agentId)
+                                                ? 'bg-white text-black border-white'
+                                                : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
                                                 }`}
                                         >
                                             {getAgentName(agentId)}
@@ -228,22 +218,20 @@ export function FilterBar({
 
                         {/* Opponents Filter */}
                         {opponents.length > 0 && (
-                            <div className="flex-1 min-w-[200px]">
-                                <label className="block text-xs text-gray-400 mb-1 font-semibold">OPPONENTS</label>
-                                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                            <div className="space-y-3">
+                                <label className="block text-[10px] text-gray-400 font-black tracking-widest uppercase">Opponent History</label>
+                                <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
                                     {opponents.map(t => (
                                         <button
                                             key={t.name}
                                             onClick={() => handleOpponentSelect(t.name)}
-                                            className={`px-3 py-1 text-xs rounded border transition-colors ${selectedOpponents.includes(t.name)
-                                                ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400'
-                                                : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
+                                            className={`px-3 py-1.5 text-[11px] font-bold uppercase transition-all border ${selectedOpponents.includes(t.name)
+                                                ? 'bg-indigo-600 border-indigo-600 text-white'
+                                                : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
                                                 }`}
                                         >
                                             {t.name}
-                                            <span className="ml-1 text-[10px] bg-gray-700 px-1 rounded">
-                                                {t.count}
-                                            </span>
+                                            <span className="ml-2 opacity-50 text-[9px]">{t.count}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -251,90 +239,32 @@ export function FilterBar({
                         )}
                     </div>
 
-                    <div className="flex flex-wrap gap-4 border-t border-gray-800 pt-4">
-                        {/* Date Filter */}
+                    {/* 下段: Date & Tags */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-white/5">
+                        {/* Date Picker */}
                         {showDate && (
-                            <div className="w-auto">
-                                <label className="block text-xs text-gray-400 mb-1 font-semibold">DATE RANGE</label>
+                            <div className="space-y-3">
+                                <label className="block text-[10px] text-gray-400 font-black tracking-widest uppercase">Operation Date</label>
                                 <div className="flex gap-2 items-center">
-                                    <div
-                                        onClick={() => (document.getElementById('date-start-picker') as HTMLInputElement)?.showPicker()}
-                                        className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white cursor-pointer hover:border-gray-600 min-w-[90px] text-center select-none"
-                                    >
-                                        {dateRange.start || <span className="text-gray-500">Start</span>}
-                                    </div>
                                     <input
-                                        id="date-start-picker"
                                         type="date"
                                         value={dateRange.start}
                                         onChange={(e) => handleDateChange('start', e.target.value)}
-                                        className="sr-only"
+                                        className="bg-white/5 border border-white/10 rounded-none px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500 transition-colors"
                                     />
-
-                                    <span className="text-gray-500">-</span>
-
-                                    <div
-                                        onClick={() => (document.getElementById('date-end-picker') as HTMLInputElement)?.showPicker()}
-                                        className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white cursor-pointer hover:border-gray-600 min-w-[90px] text-center select-none"
-                                    >
-                                        {dateRange.end || <span className="text-gray-500">End</span>}
-                                    </div>
+                                    <span className="text-gray-600">—</span>
                                     <input
-                                        id="date-end-picker"
                                         type="date"
                                         value={dateRange.end}
                                         onChange={(e) => handleDateChange('end', e.target.value)}
-                                        className="sr-only"
+                                        className="bg-white/5 border border-white/10 rounded-none px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500 transition-colors"
                                     />
                                 </div>
                             </div>
                         )}
-                    </div>
 
-                    {/* Tag Filters */}
-                    {availableTags.length > 0 && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-800 pt-4">
-                            <div>
-                                <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">Include Tags</div>
-                                <div className="flex flex-wrap gap-2">
-                                    {availableTags.map(tag => (
-                                        <button
-                                            key={`inc-${tag}`}
-                                            onClick={() => handleMultiSelect('includeTags', includeTags, tag, setIncludeTags)}
-                                            className={`px-3 py-1 rounded text-xs font-medium transition-all border ${includeTags.includes(tag)
-                                                ? 'border-transparent text-white shadow-lg scale-105'
-                                                : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
-                                                }`}
-                                            style={includeTags.includes(tag) ? { backgroundColor: getTagColor(tag) } : {}}
-                                        >
-                                            {tag}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div>
-                                <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">Exclude Tags</div>
-                                <div className="flex flex-wrap gap-2">
-                                    {availableTags.map(tag => (
-                                        <button
-                                            key={`exc-${tag}`}
-                                            onClick={() => handleMultiSelect('excludeTags', excludeTags, tag, setExcludeTags)}
-                                            className={`px-3 py-1 rounded text-xs font-medium transition-all border ${excludeTags.includes(tag)
-                                                ? 'bg-red-900/50 border-red-500 text-red-200 shadow-lg'
-                                                : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
-                                                }`}
-                                        >
-                                            {tag}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Clear Filters */}
-                    {(selectedMaps.length > 0 || selectedAgents.length > 0 || selectedOpponents.length > 0 || dateRange.start || dateRange.end || includeTags.length > 0 || excludeTags.length > 0) && (
-                        <div className="flex justify-end pt-2">
+                        {/* Clear Button */}
+                        <div className="flex items-end justify-end">
                             <button
                                 onClick={() => {
                                     setSelectedMaps([]);
@@ -345,12 +275,13 @@ export function FilterBar({
                                     setDateRange({ start: '', end: '' });
                                     router.push(pathname);
                                 }}
-                                className="text-xs text-red-400 hover:text-red-300 underline"
+                                className="group flex items-center gap-2 text-[10px] font-black uppercase tracking-tighter text-gray-500 hover:text-red-500 transition-all"
                             >
-                                Clear All Filters
+                                <div className="w-4 h-px bg-gray-700 group-hover:bg-red-500 transition-all" />
+                                Reset Operations
                             </button>
                         </div>
-                    )}
+                    </div>
                 </div>
             )}
         </div>
