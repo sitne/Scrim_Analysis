@@ -354,82 +354,91 @@ export default async function TeamStatsPage(props: PageProps) {
                         </div>
                     </div>
 
-                    {/* Map Statistics */}
                     <div className="space-y-6">
                         <h2 className="text-2xl font-bold border-l-4 border-red-500 pl-4">マップ統計</h2>
                         <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left whitespace-nowrap">
-                                    <thead className="bg-gray-800/50 text-gray-400 text-xs uppercase font-semibold">
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-gray-800/50 text-gray-400 text-[12px] uppercase font-bold border-b border-gray-700">
                                         <tr>
-                                            <th className="p-4">マップ</th>
-                                            <th className="p-4 text-center">試合数</th>
-                                            <th className="p-4 text-center">勝率</th>
-                                            <th className="p-4 text-center">ATK勝率</th>
-                                            <th className="p-4 text-center">DEF勝率</th>
-                                            <th className="p-4 text-center">ピストルATK</th>
-                                            <th className="p-4 text-center">ピストルDEF</th>
-                                            <th className="p-4 text-center">リテイク</th>
-                                            <th className="p-4 text-center">ポストプラント</th>
-                                            <th className="p-4 text-center">5v4 Win%</th>
-                                            <th className="p-4 text-center">4v5 Win%</th>
+                                            <th className="p-3 text-center border-r border-gray-800" rowSpan={2}>マップ</th>
+                                            <th className="p-3 text-center border-r border-gray-800" rowSpan={2}>試合</th>
+                                            <th className="p-3 text-center border-r border-gray-800" colSpan={3}>勝率 (%)</th>
+                                            <th className="p-3 text-center border-r border-gray-800" colSpan={2}>ピストル</th>
+                                            <th className="p-3 text-center border-r border-gray-800" colSpan={2}>スパイク設置後</th>
+                                            <th className="p-3 text-center" colSpan={2}>人数状況別勝率</th>
+                                        </tr>
+                                        <tr className="bg-gray-800/20 text-[9px]">
+                                            {/* 勝率内訳 */}
+                                            <th className="p-1 text-center border-r border-gray-800/50 font-medium">TOTAL</th>
+                                            <th className="p-1 text-center text-orange-400 border-r border-gray-800/50">ATK</th>
+                                            <th className="p-1 text-center text-blue-400 border-r border-gray-800">DEF</th>
+                                            {/* ピストル内訳 */}
+                                            <th className="p-1 text-center text-orange-400 border-r border-gray-800/50">ATK</th>
+                                            <th className="p-1 text-center text-blue-400 border-r border-gray-800">DEF</th>
+                                            {/* 設置後(ポストプラント/リテイク)内訳 */}
+                                            <th className="p-1 text-center text-orange-400 border-r border-gray-800/50">ATK</th>
+                                            <th className="p-1 text-center text-blue-400 border-r border-gray-800">DEF (Retake)</th>
+                                            {/* アドバンテージ内訳 */}
+                                            <th className="p-1 text-center text-green-500 normal-case border-r border-gray-800/50">5v4</th>
+                                            <th className="p-1 text-center text-red-500 normal-case">4v5</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-800">
                                         {mapStats.map((stat) => (
                                             <tr key={stat.mapId} className="hover:bg-gray-800/30 transition-colors">
-                                                <td className="p-4 font-bold text-lg">{stat.mapName}</td>
-                                                <td className="p-4 text-center font-mono">{stat.played}</td>
-                                                <td className="p-4 text-center font-mono text-green-400">
-                                                    {`${stat.myTeamWinRate.toFixed(1)}%`}
+                                                <td className="p-2 font-bold text-white border-r border-gray-800/50">{stat.mapName}</td>
+                                                <td className="p-2 text-center font-mono text-gray-400 border-r border-gray-800/50">{stat.played}</td>
+
+                                                {/* 勝率(T/A/D) */}
+                                                <td className="p-2 text-center border-r border-gray-800/30 font-bold text-green-400">{stat.myTeamWinRate.toFixed(1)}%
+                                                    <div className="text-[9px] text-gray-500 font-mono">({stat.myTeamWins}/{stat.played})</div>
                                                 </td>
-                                                <td className="p-4 text-center font-mono text-orange-400">
-                                                    {`${stat.attackWinRate.toFixed(1)}%`}
-                                                    <span className="text-xs text-gray-500 ml-1">({stat.attackWins}/{stat.attackRounds})</span>
+                                                <td className="p-2 text-center bg-orange-500/5 border-r border-gray-800/30">
+                                                    <div className="text-orange-400 font-bold text-sm">{stat.attackWinRate.toFixed(1)}%</div>
+                                                    <div className="text-[9px] text-gray-500 font-mono">({stat.attackWins}/{stat.attackRounds})</div>
                                                 </td>
-                                                <td className="p-4 text-center font-mono text-blue-400">
-                                                    {`${stat.defenseWinRate.toFixed(1)}%`}
-                                                    <span className="text-xs text-gray-500 ml-1">({stat.defenseWins}/{stat.defenseRounds})</span>
+                                                <td className="p-3 text-center bg-blue-500/5 border-r border-gray-800">
+                                                    <div className="text-blue-400 font-bold text-sm">{stat.defenseWinRate.toFixed(1)}%</div>
+                                                    <div className="text-[9px] text-gray-500 font-mono">({stat.defenseWins}/{stat.defenseRounds})</div>
                                                 </td>
-                                                <td className="p-4 text-center font-mono text-orange-400">
-                                                    {`${stat.pistolAttackWinRate.toFixed(1)}%`}
-                                                    <span className="text-xs text-gray-500 ml-1">({stat.pistolAttackWins}/{stat.pistolAttackRounds})</span>
+
+                                                {/* ピストル(A/D) */}
+                                                <td className="p-3 text-center bg-orange-500/5 border-r border-gray-800/30">
+                                                    <div className="text-orange-400 font-bold text-sm">{stat.pistolAttackWinRate.toFixed(1)}%</div>
+                                                    <div className="text-[9px] text-gray-500 font-mono">({stat.pistolAttackWins}/{stat.pistolAttackRounds})</div>
                                                 </td>
-                                                <td className="p-4 text-center font-mono text-blue-400">
-                                                    {`${stat.pistolDefenseWinRate.toFixed(1)}%`}
-                                                    <span className="text-xs text-gray-500 ml-1">({stat.pistolDefenseWins}/{stat.pistolDefenseRounds})</span>
+                                                <td className="p-3 text-center bg-blue-500/5 border-r border-gray-800">
+                                                    <div className="text-blue-400 font-bold text-sm">{stat.pistolDefenseWinRate.toFixed(1)}%</div>
+                                                    <div className="text-[9px] text-gray-500 font-mono">({stat.pistolDefenseWins}/{stat.pistolDefenseRounds})</div>
                                                 </td>
-                                                <td className="p-4 text-center font-mono text-purple-400">
-                                                    {`${stat.retakeSuccessRate.toFixed(1)}%`}
-                                                    <span className="text-xs text-gray-500 ml-1">({stat.retakeSuccesses}/{stat.retakeOpportunities})</span>
+
+                                                {/* 設置後(ATK=Post-plant / DEF=Retake) */}
+                                                <td className="p-3 text-center bg-orange-500/5 border-r border-gray-800/30">
+                                                    <div className="text-orange-400 font-bold text-sm">{stat.postPlantWinRate.toFixed(1)}%</div>
+                                                    <div className="text-[9px] text-gray-500 font-mono">({stat.postPlantWins}/{stat.postPlantOpportunities})</div>
                                                 </td>
-                                                <td className="p-4 text-center font-mono text-pink-400">
-                                                    {`${stat.postPlantWinRate.toFixed(1)}%`}
-                                                    <span className="text-xs text-gray-500 ml-1">({stat.postPlantWins}/{stat.postPlantOpportunities})</span>
+                                                <td className="p-3 text-center bg-blue-500/5 border-r border-gray-800">
+                                                    <div className="text-blue-400 font-bold text-sm">{stat.retakeSuccessRate.toFixed(1)}%</div>
+                                                    <div className="text-[9px] text-gray-500 font-mono">({stat.retakeSuccesses}/{stat.retakeOpportunities})</div>
                                                 </td>
-                                                <td className="p-4 text-center font-mono text-green-400">
-                                                    {`${stat.winRate5v4.toFixed(1)}%`}
-                                                    <span className="text-xs text-gray-500 ml-1">({stat.win5v4}/{stat.opportunity5v4})</span>
+
+                                                {/* アドバンテージ(5v4/4v5) */}
+                                                <td className="p-3 text-center bg-green-500/5 border-r border-gray-800/30">
+                                                    <div className="text-green-400 font-bold text-sm">{stat.winRate5v4.toFixed(1)}%</div>
+                                                    <div className="text-[9px] text-gray-500 font-mono">({stat.win5v4}/{stat.opportunity5v4})</div>
                                                 </td>
-                                                <td className="p-4 text-center font-mono text-red-400">
-                                                    {`${stat.winRate4v5.toFixed(1)}%`}
-                                                    <span className="text-xs text-gray-500 ml-1">({stat.win4v5}/{stat.opportunity4v5})</span>
+                                                <td className="p-3 text-center bg-red-500/5">
+                                                    <div className="text-red-400 font-bold text-sm">{stat.winRate4v5.toFixed(1)}%</div>
+                                                    <div className="text-[9px] text-gray-500 font-mono">({stat.win4v5}/{stat.opportunity4v5})</div>
                                                 </td>
                                             </tr>
                                         ))}
-                                        {mapStats.length === 0 && (
-                                            <tr>
-                                                <td colSpan={11} className="p-8 text-center text-gray-500">
-                                                    マッチデータがありません
-                                                </td>
-                                            </tr>
-                                        )}
                                     </tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
-
                     {/* Agent Statistics */}
                     <div className="space-y-6">
                         <h2 className="text-2xl font-bold border-l-4 border-red-500 pl-4">エージェント統計</h2>
