@@ -371,6 +371,8 @@ export default async function TeamStatsPage(props: PageProps) {
                                             <th className="p-4 text-center">ピストルDEF</th>
                                             <th className="p-4 text-center">リテイク</th>
                                             <th className="p-4 text-center">ポストプラント</th>
+                                            <th className="p-4 text-center">5v4 Win%</th>
+                                            <th className="p-4 text-center">4v5 Win%</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-800">
@@ -405,11 +407,19 @@ export default async function TeamStatsPage(props: PageProps) {
                                                     {`${stat.postPlantWinRate.toFixed(1)}%`}
                                                     <span className="text-xs text-gray-500 ml-1">({stat.postPlantWins}/{stat.postPlantOpportunities})</span>
                                                 </td>
+                                                <td className="p-4 text-center font-mono text-green-400">
+                                                    {`${stat.winRate5v4.toFixed(1)}%`}
+                                                    <span className="text-xs text-gray-500 ml-1">({stat.win5v4}/{stat.opportunity5v4})</span>
+                                                </td>
+                                                <td className="p-4 text-center font-mono text-red-400">
+                                                    {`${stat.winRate4v5.toFixed(1)}%`}
+                                                    <span className="text-xs text-gray-500 ml-1">({stat.win4v5}/{stat.opportunity4v5})</span>
+                                                </td>
                                             </tr>
                                         ))}
                                         {mapStats.length === 0 && (
                                             <tr>
-                                                <td colSpan={9} className="p-8 text-center text-gray-500">
+                                                <td colSpan={11} className="p-8 text-center text-gray-500">
                                                     マッチデータがありません
                                                 </td>
                                             </tr>

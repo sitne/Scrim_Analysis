@@ -54,6 +54,13 @@ export interface MapStat {
     pistolDefenseWinRate: number;
     retakeSuccessRate: number;
     postPlantWinRate: number;
+    // 5v4 / 4v5 stats
+    win5v4: number;
+    opportunity5v4: number;
+    win4v5: number;
+    opportunity4v5: number;
+    winRate5v4: number;
+    winRate4v5: number;
 }
 
 export interface AgentStat {
@@ -102,7 +109,7 @@ export function calculateStats(
     let totalRounds = 0;
 
     // 2. Map Stats
-    const mapStatsMap = new Map<string, Omit<MapStat, 'mapName' | 'myTeamWinRate' | 'enemyWinRate' | 'attackWinRate' | 'defenseWinRate' | 'pistolWinRate' | 'pistolAttackWinRate' | 'pistolDefenseWinRate' | 'retakeSuccessRate' | 'postPlantWinRate'>>();
+    const mapStatsMap = new Map<string, Omit<MapStat, 'mapName' | 'myTeamWinRate' | 'enemyWinRate' | 'attackWinRate' | 'defenseWinRate' | 'pistolWinRate' | 'pistolAttackWinRate' | 'pistolDefenseWinRate' | 'retakeSuccessRate' | 'postPlantWinRate' | 'winRate5v4' | 'winRate4v5'>>();
 
     // 3. Agent Stats (Filtered Players only)
     const agentStatsMap = new Map<string, { picks: number; wins: number; matches: number }>();
@@ -140,7 +147,9 @@ export function calculateStats(
                 pistolAttackRounds: 0, pistolAttackWins: 0,
                 pistolDefenseRounds: 0, pistolDefenseWins: 0,
                 retakeOpportunities: 0, retakeSuccesses: 0,
-                postPlantOpportunities: 0, postPlantWins: 0
+                postPlantOpportunities: 0, postPlantWins: 0,
+                win5v4: 0, opportunity5v4: 0,
+                win4v5: 0, opportunity4v5: 0
             });
         }
         const mapStat = mapStatsMap.get(match.mapId)!;
@@ -315,9 +324,42 @@ export function calculateStats(
                         playerStatsMap.get(victimId)!.firstDeaths++;
                     }
                 }
+
+                // 5v4 / 4v5 Analysis
+                if (roundKills.length > 0) {
+                    const firstKill = roundKills[0];
+                    const killerId = firstKill.killerId;
+                    const killerTeamId = match.players.find(p => p.puuid === killerId)?.teamId;
+
+                    if (killerTeamId) {
+                        // Check for trade (killer died within 3s?)
+                        const tradeLimitTime = (firstKill.roundTime || 0) + 3000;
+                        const validTrade = roundKills.find(k =>
+                            k.victimId === killerId &&
+                            (k.roundTime || 0) > (firstKill.roundTime || 0) &&
+                            (k.roundTime || 0) <= tradeLimitTime
+                        );
+
+                        if (!validTrade) {
+                            const isMyTeamKiller = killerTeamId === myTeamSide;
+                            const weWon = round.winningTeam === myTeamSide;
+
+                            if (isMyTeamKiller) {
+                                // 5v4
+                                mapStat.opportunity5v4++;
+                                if (weWon) mapStat.win5v4++;
+                            } else {
+                                // 4v5
+                                mapStat.opportunity4v5++;
+                                if (weWon) mapStat.win4v5++;
+                            }
+                        }
+                    }
+                }
             });
         }
     });
+
 
     // Convert Maps to Arrays and calculate derived stats
     const mapStats: MapStat[] = Array.from(mapStatsMap.values()).map(stat => ({
@@ -332,6 +374,8 @@ export function calculateStats(
         pistolDefenseWinRate: stat.pistolDefenseRounds > 0 ? (stat.pistolDefenseWins / stat.pistolDefenseRounds) * 100 : 0,
         retakeSuccessRate: stat.retakeOpportunities > 0 ? (stat.retakeSuccesses / stat.retakeOpportunities) * 100 : 0,
         postPlantWinRate: stat.postPlantOpportunities > 0 ? (stat.postPlantWins / stat.postPlantOpportunities) * 100 : 0,
+        winRate5v4: stat.opportunity5v4 > 0 ? (stat.win5v4 / stat.opportunity5v4) * 100 : 0,
+        winRate4v5: stat.opportunity4v5 > 0 ? (stat.win4v5 / stat.opportunity4v5) * 100 : 0,
     }));
 
     const roleOrder: Record<string, number> = {
