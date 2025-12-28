@@ -9,6 +9,7 @@ export const mapDisplayNames: Record<string, string> = {
     duality: "Bind",
     pitt: "Pearl",
     jam: "Lotus",
+    rook: "Corrode",
 }
 
 // Agent UUIDs to display names
