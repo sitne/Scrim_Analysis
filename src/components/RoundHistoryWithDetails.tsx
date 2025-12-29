@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { getAgentName, getAgentIconPath } from '@/lib/utils';
+import { getAgentName, getAgentIconPath, getWeaponData } from '@/lib/utils';
+import { getArmorData } from '@/lib/valorant-api';
 import { Bomb, Skull, Wrench, Hourglass, ArrowLeftRight } from 'lucide-react';
 import { Fragment } from 'react';
 
@@ -26,6 +27,11 @@ interface RoundHistoryWithDetailsProps {
             assists: number;
             damage: number;
             score: number;
+            loadoutValue?: number | null;
+            weapon?: string | null;
+            armor?: string | null;
+            remainingMoney?: number | null;
+            spentMoney?: number | null;
         }>;
     }>;
     players: Array<{
@@ -430,14 +436,55 @@ export function RoundHistoryWithDetails({
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="flex gap-4 text-sm font-mono ml-2 flex-shrink-0">
-                                                <div>
+                                            <div className="flex gap-2 text-sm font-mono ml-2 flex-shrink-0 items-center">
+                                                {/* Weapon & Armor Info */}
+                                                <div className="flex items-center gap-2 px-2 border-r border-gray-700 h-10 w-28">
+                                                    <div className="w-16 flex justify-center">
+                                                        {stat.weapon && getWeaponData(stat.weapon)?.killStreamIcon ? (
+                                                            <div className="flex flex-col items-center gap-0.5" title={getWeaponData(stat.weapon)?.name}>
+                                                                <img
+                                                                    src={getWeaponData(stat.weapon)?.killStreamIcon}
+                                                                    alt={getWeaponData(stat.weapon)?.name}
+                                                                    className="h-4 w-auto brightness-200"
+                                                                />
+                                                                <span className="text-[9px] text-gray-500 uppercase truncate max-w-[60px]">{getWeaponData(stat.weapon)?.name}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-gray-600">-</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="w-8 flex justify-center">
+                                                        {stat.armor && getArmorData(stat.armor) ? (
+                                                            <div className="flex flex-col items-center">
+                                                                <div className={`w-3 h-3 rounded-sm ${getArmorData(stat.armor)?.value === 50 ? 'bg-blue-500' : 'bg-blue-500/50'}`}
+                                                                    title={getArmorData(stat.armor)?.name} />
+                                                                <span className="text-[9px] text-gray-500">{getArmorData(stat.armor)?.value}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-gray-600">-</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="w-16 text-right">
+                                                    <div className="text-gray-400 text-xs">LOADOUT</div>
+                                                    <div className="text-white">
+                                                        ¤{stat.loadoutValue?.toLocaleString() ?? '-'}
+                                                    </div>
+                                                </div>
+                                                <div className="w-14 text-right">
+                                                    <div className="text-gray-400 text-xs">REMAIN</div>
+                                                    <div className="text-gray-400">
+                                                        ¤{stat.remainingMoney?.toLocaleString() ?? '-'}
+                                                    </div>
+                                                </div>
+                                                <div className="w-14 text-center">
                                                     <div className="text-gray-400 text-xs">K/D/A</div>
                                                     <div className="text-white">
                                                         {stat.kills}/{stat.deaths}/{stat.assists}
                                                     </div>
                                                 </div>
-                                                <div>
+                                                <div className="w-10 text-right">
                                                     <div className="text-gray-400 text-xs">DMG</div>
                                                     <div className="text-yellow-400">
                                                         {stat.damage}
@@ -487,14 +534,55 @@ export function RoundHistoryWithDetails({
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="flex gap-4 text-sm font-mono ml-2 flex-shrink-0">
-                                                <div>
+                                            <div className="flex gap-2 text-sm font-mono ml-2 flex-shrink-0 items-center">
+                                                {/* Weapon & Armor Info */}
+                                                <div className="flex items-center gap-2 px-2 border-r border-gray-700 h-10 w-28">
+                                                    <div className="w-16 flex justify-center">
+                                                        {stat.weapon && getWeaponData(stat.weapon)?.killStreamIcon ? (
+                                                            <div className="flex flex-col items-center gap-0.5" title={getWeaponData(stat.weapon)?.name}>
+                                                                <img
+                                                                    src={getWeaponData(stat.weapon)?.killStreamIcon}
+                                                                    alt={getWeaponData(stat.weapon)?.name}
+                                                                    className="h-4 w-auto brightness-200"
+                                                                />
+                                                                <span className="text-[9px] text-gray-500 uppercase truncate max-w-[60px]">{getWeaponData(stat.weapon)?.name}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-gray-600">-</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="w-8 flex justify-center">
+                                                        {stat.armor && getArmorData(stat.armor) ? (
+                                                            <div className="flex flex-col items-center">
+                                                                <div className={`w-3 h-3 rounded-sm ${getArmorData(stat.armor)?.value === 50 ? 'bg-blue-500' : 'bg-blue-500/50'}`}
+                                                                    title={getArmorData(stat.armor)?.name} />
+                                                                <span className="text-[9px] text-gray-500">{getArmorData(stat.armor)?.value}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-gray-600">-</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="w-16 text-right">
+                                                    <div className="text-gray-400 text-xs">LOADOUT</div>
+                                                    <div className="text-white">
+                                                        ¤{stat.loadoutValue?.toLocaleString() ?? '-'}
+                                                    </div>
+                                                </div>
+                                                <div className="w-14 text-right">
+                                                    <div className="text-gray-400 text-xs">REMAIN</div>
+                                                    <div className="text-gray-400">
+                                                        ¤{stat.remainingMoney?.toLocaleString() ?? '-'}
+                                                    </div>
+                                                </div>
+                                                <div className="w-14 text-center">
                                                     <div className="text-gray-400 text-xs">K/D/A</div>
                                                     <div className="text-white">
                                                         {stat.kills}/{stat.deaths}/{stat.assists}
                                                     </div>
                                                 </div>
-                                                <div>
+                                                <div className="w-10 text-right">
                                                     <div className="text-gray-400 text-xs">DMG</div>
                                                     <div className="text-yellow-400">
                                                         {stat.damage}

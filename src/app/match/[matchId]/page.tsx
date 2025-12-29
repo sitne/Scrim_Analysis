@@ -17,6 +17,7 @@ import {
     calculateKAST,
     calculateFKFD
 } from '@/lib/stats';
+import { fetchValorantData } from '@/lib/valorant-api';
 
 // Define precise type for Match with included relations
 type MatchDetailData = Prisma.MatchGetPayload<{
@@ -122,6 +123,9 @@ export default async function MatchPage(props: MatchPageProps) {
     const blueDisplayName = match.blueTeamName || 'Blue Team';
     // @ts-ignore
     const blueTeamTag = match.blueTeamTag;
+
+    // Ensure Valorant data is fetched
+    await fetchValorantData();
 
     return (
         <div className="space-y-8">
@@ -336,7 +340,11 @@ export default async function MatchPage(props: MatchPageProps) {
             </div>
 
             {/* Round History with Details */}
-            <RoundHistoryWithDetails rounds={match.rounds as any} players={match.players as any} kills={match.kills} />
+            <RoundHistoryWithDetails
+                rounds={match.rounds as any}
+                players={match.players as any}
+                kills={match.kills}
+            />
 
             {/* Match Heatmap */}
             <div className="space-y-4">

@@ -21,6 +21,13 @@ interface ValorantMap {
     yScalarToAdd: number;
 }
 
+interface ValorantWeapon {
+    uuid: string;
+    displayName: string;
+    displayIcon: string;
+    killStreamIcon: string;
+}
+
 // In-memory cache
 let agentCache: Record<string, { name: string; icon: string; role: string }> | null = null;
 let mapCache: Record<string, {
@@ -32,12 +39,13 @@ let mapCache: Record<string, {
     xScalarToAdd: number;
     yScalarToAdd: number;
 }> | null = null;
+let weaponCache: Record<string, { name: string; icon: string; killStreamIcon: string }> | null = null;
 let lastFetchTime = 0;
 const CACHE_DURATION = 1000 * 60 * 60; // 1 hour
 
 export async function fetchValorantData() {
     const now = Date.now();
-    if (agentCache && mapCache && (now - lastFetchTime < CACHE_DURATION)) {
+    if (agentCache && mapCache && weaponCache && (now - lastFetchTime < CACHE_DURATION)) {
         return;
     }
 
@@ -49,7 +57,7 @@ export async function fetchValorantData() {
         agentCache = {};
         agentsData.data.forEach((agent: ValorantAgent) => {
             if (agent.isPlayableCharacter) {
-                agentCache![agent.uuid] = {
+                agentCache![agent.uuid.toLowerCase()] = {
                     name: agent.displayName,
                     icon: agent.displayIcon,
                     role: agent.role?.displayName || 'Unknown'
@@ -77,6 +85,19 @@ export async function fetchValorantData() {
             };
         });
 
+        // Fetch Weapons
+        const weaponsRes = await fetch('https://valorant-api.com/v1/weapons?language=en-US');
+        const weaponsData = await weaponsRes.json();
+
+        weaponCache = {};
+        weaponsData.data.forEach((weapon: ValorantWeapon) => {
+            weaponCache![weapon.uuid.toLowerCase()] = {
+                name: weapon.displayName,
+                icon: weapon.displayIcon,
+                killStreamIcon: weapon.killStreamIcon
+            };
+        });
+
         lastFetchTime = now;
         console.log('Valorant data fetched and cached');
 
@@ -93,17 +114,18 @@ export async function fetchValorantData() {
 
 export function getAgentData(uuid: string | null | undefined) {
     if (!uuid) return null;
+    const normalizedUuid = uuid.toLowerCase();
 
     // Try cache first
-    if (agentCache && agentCache[uuid]) {
-        return agentCache[uuid];
+    if (agentCache && agentCache[normalizedUuid]) {
+        return agentCache[normalizedUuid];
     }
 
     // Fallback to hardcoded data
-    if (fallbackAgentMap[uuid]) {
+    if (fallbackAgentMap[normalizedUuid]) {
         return {
-            name: fallbackAgentMap[uuid],
-            icon: `/agents/${fallbackAgentMap[uuid].toLowerCase()}.png`, // Fallback to local image
+            name: fallbackAgentMap[normalizedUuid],
+            icon: `/agents/${fallbackAgentMap[normalizedUuid].toLowerCase()}.png`, // Fallback to local image
             role: 'Unknown'
         };
     }
@@ -144,4 +166,35 @@ export function getMapData(mapId: string) {
         xScalarToAdd: 0,
         yScalarToAdd: 0
     };
+}
+
+export function getWeaponData(uuid: string | null | undefined) {
+    if (!uuid) return null;
+    const normalizedUuid = uuid.toLowerCase();
+
+    if (weaponCache && weaponCache[normalizedUuid]) {
+        return weaponCache[normalizedUuid];
+    }
+
+    return { name: 'Unknown', icon: '', killStreamIcon: '' };
+}
+
+export const ARMOR_MAP: Record<string, { name: string; value: number }> = {
+    '822bcab2-40a2-324e-c137-e09195ad7692': { name: 'Heavy Armor', value: 50 },
+    '4dec83d5-4902-9ab3-bed6-a7a390761157': { name: 'Light Armor', value: 25 },
+    'b1b9086d-41bd-a516-5d29-e3b34a6f1644': { name: 'Light Armor', value: 25 }, // Some API versions use different UUIDs for same items
+};
+
+export function getArmorData(uuid: string | null | undefined) {
+    if (!uuid) return null;
+    const normalizedUuid = uuid.toLowerCase();
+    return ARMOR_MAP[normalizedUuid] || null;
+}
+
+export function getAllWeaponData() {
+    return weaponCache || {};
+}
+
+export function getAllAgentData() {
+    return agentCache || {};
 }
