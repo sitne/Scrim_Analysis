@@ -15,6 +15,11 @@ function downloadImage(url, filename) {
         const file = fs.createWriteStream(filePath);
 
         https.get(url, (response) => {
+            if (response.statusCode !== 200) {
+                fs.unlink(filePath, () => { });
+                reject(new Error(`Failed to download ${url}: HTTP ${response.statusCode}`));
+                return;
+            }
             response.pipe(file);
             file.on('finish', () => {
                 file.close();
