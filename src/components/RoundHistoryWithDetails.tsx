@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { getAgentName, getAgentIconPath, getWeaponData } from '@/lib/utils';
-import { getArmorData } from '@/lib/valorant-api';
+import { getAgentName, getAgentIconPath, getWeaponData, getArmorData } from '@/lib/utils';
 import { Bomb, Skull, Wrench, Hourglass, ArrowLeftRight } from 'lucide-react';
 import { Fragment } from 'react';
 
@@ -438,7 +437,7 @@ export function RoundHistoryWithDetails({
                                             </div>
                                             <div className="flex gap-2 text-sm font-mono ml-2 flex-shrink-0 items-center">
                                                 {/* Weapon & Armor Info */}
-                                                <div className="flex items-center gap-2 px-2 border-r border-gray-700 h-10 w-28">
+                                                <div className="flex items-center gap-2 px-2 border-r border-gray-700 h-10 w-32">
                                                     <div className="w-16 flex justify-center">
                                                         {stat.weapon && getWeaponData(stat.weapon)?.killStreamIcon ? (
                                                             <div className="flex flex-col items-center gap-0.5" title={getWeaponData(stat.weapon)?.name}>
@@ -453,11 +452,14 @@ export function RoundHistoryWithDetails({
                                                             <span className="text-gray-600">-</span>
                                                         )}
                                                     </div>
-                                                    <div className="w-8 flex justify-center">
-                                                        {stat.armor && getArmorData(stat.armor) ? (
-                                                            <div className="flex flex-col items-center">
-                                                                <div className={`w-3 h-3 rounded-sm ${getArmorData(stat.armor)?.value === 50 ? 'bg-blue-500' : 'bg-blue-500/50'}`}
-                                                                    title={getArmorData(stat.armor)?.name} />
+                                                    <div className="w-10 flex justify-center">
+                                                        {stat.armor && getArmorData(stat.armor)?.icon ? (
+                                                            <div className="flex flex-col items-center" title={getArmorData(stat.armor)?.name}>
+                                                                <img
+                                                                    src={getArmorData(stat.armor)?.icon}
+                                                                    alt={getArmorData(stat.armor)?.name}
+                                                                    className="h-5 w-auto"
+                                                                />
                                                                 <span className="text-[9px] text-gray-500">{getArmorData(stat.armor)?.value}</span>
                                                             </div>
                                                         ) : (
@@ -536,7 +538,7 @@ export function RoundHistoryWithDetails({
                                             </div>
                                             <div className="flex gap-2 text-sm font-mono ml-2 flex-shrink-0 items-center">
                                                 {/* Weapon & Armor Info */}
-                                                <div className="flex items-center gap-2 px-2 border-r border-gray-700 h-10 w-28">
+                                                <div className="flex items-center gap-2 px-2 border-r border-gray-700 h-10 w-32">
                                                     <div className="w-16 flex justify-center">
                                                         {stat.weapon && getWeaponData(stat.weapon)?.killStreamIcon ? (
                                                             <div className="flex flex-col items-center gap-0.5" title={getWeaponData(stat.weapon)?.name}>
@@ -551,11 +553,14 @@ export function RoundHistoryWithDetails({
                                                             <span className="text-gray-600">-</span>
                                                         )}
                                                     </div>
-                                                    <div className="w-8 flex justify-center">
-                                                        {stat.armor && getArmorData(stat.armor) ? (
-                                                            <div className="flex flex-col items-center">
-                                                                <div className={`w-3 h-3 rounded-sm ${getArmorData(stat.armor)?.value === 50 ? 'bg-blue-500' : 'bg-blue-500/50'}`}
-                                                                    title={getArmorData(stat.armor)?.name} />
+                                                    <div className="w-10 flex justify-center">
+                                                        {stat.armor && getArmorData(stat.armor)?.icon ? (
+                                                            <div className="flex flex-col items-center" title={getArmorData(stat.armor)?.name}>
+                                                                <img
+                                                                    src={getArmorData(stat.armor)?.icon}
+                                                                    alt={getArmorData(stat.armor)?.name}
+                                                                    className="h-5 w-auto"
+                                                                />
                                                                 <span className="text-[9px] text-gray-500">{getArmorData(stat.armor)?.value}</span>
                                                             </div>
                                                         ) : (

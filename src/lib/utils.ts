@@ -1,8 +1,9 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { getAgentData, getMapData, getArmorData as getArmorDataRaw } from "./valorant-api"
+import { getAgentData, getMapData } from "./valorant-api"
 import { agentMap, mapDisplayNames } from "./valorant-constants"
 import { WEAPON_MAP } from "./weapon-constants"
+import { ARMOR_MAP } from "./armor-constants"
 
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs))
@@ -40,7 +41,7 @@ export function getWeaponData(weaponId: string | null | undefined) {
         return {
             name: weapon.name,
             icon: `/weapons/${weapon.fileName}.png`,
-            killStreamIcon: `/weapons/${weapon.fileName}.png` // Using silhouette for both for now
+            killStreamIcon: `/weapons/${weapon.fileName}.png`
         };
     }
 
@@ -48,7 +49,19 @@ export function getWeaponData(weaponId: string | null | undefined) {
 }
 
 export function getArmorData(armorId: string | null | undefined) {
-    return getArmorDataRaw(armorId);
+    if (!armorId) return null;
+    const normalizedUuid = armorId.toLowerCase();
+    const armor = ARMOR_MAP[normalizedUuid];
+
+    if (armor) {
+        return {
+            name: armor.name,
+            value: armor.value,
+            icon: `/armor/${armor.fileName}.png`
+        };
+    }
+
+    return null;
 }
 
 export function getTagColor(tagName: string): string {
