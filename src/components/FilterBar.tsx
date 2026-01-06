@@ -33,6 +33,7 @@ export function FilterBar({
     const [selectedMaps, setSelectedMaps] = useState<string[]>([]);
     const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
     const [selectedOpponents, setSelectedOpponents] = useState<string[]>([]);
+    const [opponentSearch, setOpponentSearch] = useState<string>('');
     const [dateRange, setDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
     const [availableTags, setAvailableTags] = useState<string[]>([]);
     const [includeTags, setIncludeTags] = useState<string[]>([]);
@@ -114,6 +115,16 @@ export function FilterBar({
 
     // Show only top 5 players by default
     const [showAllPlayers, setShowAllPlayers] = useState<boolean>(false);
+
+    // Handle opponent search input (local filter only, does not filter matches)
+    const handleOpponentSearchChange = (value: string) => {
+        setOpponentSearch(value);
+    };
+
+    // Filter opponents list based on search
+    const filteredOpponents = opponents.filter(o =>
+        o.name.toLowerCase().includes(opponentSearch.toLowerCase())
+    );
 
     // Count active filters
     const activeFilterCount = selectedMaps.length + selectedAgents.length + includeTags.length + excludeTags.length + selectedOpponents.length + (dateRange.start ? 1 : 0) + (dateRange.end ? 1 : 0);
@@ -217,26 +228,39 @@ export function FilterBar({
                         )}
 
                         {/* Opponents Filter */}
-                        {opponents.length > 0 && (
-                            <div className="space-y-3">
-                                <label className="block text-[10px] text-gray-400 font-black tracking-widest uppercase">Opponent History</label>
-                                <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-                                    {opponents.map(t => (
-                                        <button
-                                            key={t.name}
-                                            onClick={() => handleOpponentSelect(t.name)}
-                                            className={`px-3 py-1.5 text-[11px] font-bold uppercase transition-all border ${selectedOpponents.includes(t.name)
-                                                ? 'bg-indigo-600 border-indigo-600 text-white'
-                                                : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
-                                                }`}
-                                        >
-                                            {t.name}
-                                            <span className="ml-2 opacity-50 text-[9px]">{t.count}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                        <div className="space-y-3">
+                            <label className="block text-[10px] text-gray-400 font-black tracking-widest uppercase">Opponent Search</label>
+                            <input
+                                type="text"
+                                value={opponentSearch}
+                                onChange={(e) => handleOpponentSearchChange(e.target.value)}
+                                placeholder="チーム名を検索..."
+                                className="w-full bg-white/5 border border-white/10 rounded-none px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 transition-colors"
+                            />
+                            {filteredOpponents.length > 0 && (
+                                <>
+                                    <label className="block text-[10px] text-gray-500 font-medium tracking-wider uppercase mt-3">History</label>
+                                    <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
+                                        {filteredOpponents.map(t => (
+                                            <button
+                                                key={t.name}
+                                                onClick={() => handleOpponentSelect(t.name)}
+                                                className={`px-3 py-1.5 text-[11px] font-bold uppercase transition-all border ${selectedOpponents.includes(t.name)
+                                                    ? 'bg-indigo-600 border-indigo-600 text-white'
+                                                    : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                                                    }`}
+                                            >
+                                                {t.name}
+                                                <span className="ml-2 opacity-50 text-[9px]">{t.count}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                            {opponents.length > 0 && filteredOpponents.length === 0 && opponentSearch && (
+                                <div className="text-[10px] text-gray-500 italic">該当なし</div>
+                            )}
+                        </div>
                     </div>
 
                     {/* 下段: Date & Tags */}
@@ -270,6 +294,7 @@ export function FilterBar({
                                     setSelectedMaps([]);
                                     setSelectedAgents([]);
                                     setSelectedOpponents([]);
+                                    setOpponentSearch('');
                                     setIncludeTags([]);
                                     setExcludeTags([]);
                                     setDateRange({ start: '', end: '' });
