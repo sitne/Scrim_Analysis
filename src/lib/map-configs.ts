@@ -90,4 +90,13 @@ export const MAP_CONFIGS: Record<string, MapData> = {
         rotation: 0,
         displayRotation: 0,
     },
+    '/Game/Maps/Foxtrot/Foxtrot': {
+        xMultiplier: 0.00007,
+        yMultiplier: -0.00007,
+        xScalarToAdd: 0.465123,
+        yScalarToAdd: 0.833078,
+        imagePath: '/maps/breeze.png',
+        rotation: 0,
+        displayRotation: 0,
+    },
 };

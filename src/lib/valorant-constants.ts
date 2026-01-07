@@ -10,6 +10,7 @@ export const mapDisplayNames: Record<string, string> = {
     pitt: "Pearl",
     jam: "Lotus",
     rook: "Corrode",
+    foxtrot: "Breeze",
 }
 
 // Agent UUIDs to display names
