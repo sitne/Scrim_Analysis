@@ -51,7 +51,7 @@ export async function PATCH(request: Request, { params }: RouteProps) {
     // Determine which fields to update based on myTeamSide
     // If myTeamSide is Red, the opponent is Blue, so we update Blue team info.
     // If myTeamSide is Blue, the opponent is Red, so we update Red team info.
-    const updateData: any = {}
+    const updateData: { redTeamName?: string; blueTeamName?: string } = {}
 
     if (match.myTeamSide === 'Red') {
         updateData.blueTeamName = opponentName

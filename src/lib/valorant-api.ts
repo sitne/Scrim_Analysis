@@ -50,9 +50,17 @@ export async function fetchValorantData() {
     }
 
     try {
-        // Fetch Agents
-        const agentsRes = await fetch('https://valorant-api.com/v1/agents?language=en-US');
-        const agentsData = await agentsRes.json();
+        const [agentsRes, mapsRes, weaponsRes] = await Promise.all([
+            fetch('https://valorant-api.com/v1/agents?language=en-US'),
+            fetch('https://valorant-api.com/v1/maps?language=en-US'),
+            fetch('https://valorant-api.com/v1/weapons?language=en-US')
+        ]);
+
+        const [agentsData, mapsData, weaponsData] = await Promise.all([
+            agentsRes.json(),
+            mapsRes.json(),
+            weaponsRes.json()
+        ]);
 
         agentCache = {};
         agentsData.data.forEach((agent: ValorantAgent) => {
@@ -65,15 +73,8 @@ export async function fetchValorantData() {
             }
         });
 
-        // Fetch Maps
-        const mapsRes = await fetch('https://valorant-api.com/v1/maps?language=en-US');
-        const mapsData = await mapsRes.json();
-
         mapCache = {};
         mapsData.data.forEach((map: ValorantMap) => {
-            // Map URL format: /Game/Maps/Pitt/Pitt -> Pitt
-            // We need to match the internal ID used in the database
-            // The API returns "mapUrl": "/Game/Maps/Pitt/Pitt"
             mapCache![map.mapUrl] = {
                 name: map.displayName,
                 icon: map.listViewIcon,
@@ -84,10 +85,6 @@ export async function fetchValorantData() {
                 yScalarToAdd: map.yScalarToAdd
             };
         });
-
-        // Fetch Weapons
-        const weaponsRes = await fetch('https://valorant-api.com/v1/weapons?language=en-US');
-        const weaponsData = await weaponsRes.json();
 
         weaponCache = {};
         weaponsData.data.forEach((weapon: ValorantWeapon) => {

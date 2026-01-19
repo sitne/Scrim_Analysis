@@ -19,15 +19,11 @@ export const metadata: Metadata = {
   description: "Professional match analytics for VALORANT scrims",
 };
 
-import { fetchValorantData } from "@/lib/valorant-api";
-
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Fetch data from Valorant API (cached in memory)
-  await fetchValorantData();
 
   return (
     <html lang="ja" className="dark">

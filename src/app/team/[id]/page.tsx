@@ -7,6 +7,21 @@ import { FilterBar } from '@/components/FilterBar'
 import { Prisma } from '@prisma/client'
 import { fetchValorantData } from '@/lib/valorant-api'
 
+type MatchWithTeamInfo = {
+    matchId: string;
+    mapId: string;
+    gameStartMillis: bigint;
+    winningTeam: 'Red' | 'Blue' | 'Tie' | null;
+    myTeamSide: 'Red' | 'Blue' | null;
+    redTeamName: string | null;
+    redTeamTag: string | null;
+    blueTeamName: string | null;
+    blueTeamTag: string | null;
+    tags: Array<{ tagName: string }>;
+    rounds: Array<{ winningTeam: 'Red' | 'Blue' | 'Tie' }>;
+    _count: { players: number };
+};
+
 interface PageProps {
     params: Promise<{ id: string }>
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
@@ -86,35 +101,47 @@ export default async function TeamHomePage(props: PageProps) {
 
     const matchesForOpponents = matchesForOpponentsResult as any[];
 
-    // Opponent Aggregation
-    const opponentsMap = new Map<string, { name: string; count: number }>();
-    matchesForOpponents.forEach(m => {
-        let name;
-        if (m.myTeamSide === 'Red') {
-            name = m.blueTeamName;
-        } else if (m.myTeamSide === 'Blue') {
-            name = m.redTeamName;
-        }
-
-        if (name) {
-            const key = name;
-            if (!opponentsMap.has(key)) {
-                opponentsMap.set(key, { name, count: 0 });
+    const availableOpponents = (() => {
+        const opponentsMap = new Map<string, { name: string; count: number }>();
+        matchesForOpponents.forEach(m => {
+            let name;
+            if (m.myTeamSide === 'Red') {
+                name = m.blueTeamName;
+            } else if (m.myTeamSide === 'Blue') {
+                name = m.redTeamName;
             }
-            opponentsMap.get(key)!.count++;
-        }
-    });
 
-    const availableOpponents = Array.from(opponentsMap.values())
-        .sort((a, b) => b.count - a.count);
+            if (name) {
+                const key = name;
+                if (!opponentsMap.has(key)) {
+                    opponentsMap.set(key, { name, count: 0 });
+                }
+                opponentsMap.get(key)!.count++;
+            }
+        });
+
+        return Array.from(opponentsMap.values()).sort((a, b) => b.count - a.count);
+    })();
 
     const availableMaps = matchesData.map(m => m.mapId).sort((a, b) => getMapDisplayName(a).localeCompare(getMapDisplayName(b)));
     const availableAgents = agentsData.map(a => a.characterId!).filter(Boolean).sort((a, b) => getAgentName(a).localeCompare(getAgentName(b)));
 
     // Build Prisma Where Clause (with teamId filter)
     const whereClause: Prisma.MatchWhereInput = {
-        teamId: id  // Security
+        teamId: id
     };
+
+    type ExtendedMatchWhereInput = Prisma.MatchWhereInput & {
+        OR?: Array<{
+            AND: Array<{
+                myTeamSide?: 'Red' | 'Blue';
+                blueTeamName?: string;
+                redTeamName?: string;
+            }>;
+        }>;
+    };
+
+    const extendedWhereClause = whereClause as ExtendedMatchWhereInput;
 
     if (filterMaps.length > 0) {
         whereClause.mapId = { in: filterMaps };
@@ -141,8 +168,7 @@ export default async function TeamHomePage(props: PageProps) {
         });
 
         if (conditions.length > 0) {
-            // @ts-ignore
-            whereClause.OR = conditions;
+            extendedWhereClause.OR = conditions;
         }
     }
 
@@ -201,11 +227,7 @@ export default async function TeamHomePage(props: PageProps) {
     }
 
     // Agent Filtering Logic
-    // If agent filter is present, we need to filter matches where the team composition includes ANY of the selected agents.
-    // However, Prisma where clause for related fields (players) is a bit complex.
-    // We want matches where at least one player on the team (teamId=id) played one of the selected agents.
     if (filterAgents.length > 0) {
-        // Create a condition: match must have at least one player from this team who played one of the selected agents.
         const agentCondition = {
             players: {
                 some: {
@@ -222,14 +244,7 @@ export default async function TeamHomePage(props: PageProps) {
                 whereClause.AND = [whereClause.AND, agentCondition];
             }
         } else {
-            // If there's already an OR or other conditions, we need to bundle them.
-            // But simpler is to adding it to AND if possible or just setting it.
-            // Given the structure above, we can just assign it if no AND exists, but need to be careful not to overwrite.
-            // A safer way is to always use AND if we are adding multiple independent constraints that didn't fit into the top-level object properties.
-            // But here, 'players' is a top-level property of MatchWhereInput, so we can just set it?
-            // Yes, whereClause.players = ... 
-            // BUT, wait, we might have multiple conditions on players? No, currently we don't.
-            whereClause.players = agentCondition.players;
+            whereClause.players = agentCondition.players as any;
         }
     }
 
@@ -237,7 +252,7 @@ export default async function TeamHomePage(props: PageProps) {
     // Fetch Filtered Matches
     const matches = await prisma.match.findMany({
         where: whereClause,
-        take: 50, // Increase limit slightly as filters might narrow it down
+        take: 50,
         orderBy: { gameStartMillis: 'desc' },
         select: {
             matchId: true,
@@ -247,18 +262,13 @@ export default async function TeamHomePage(props: PageProps) {
             tags: { select: { tagName: true } },
             _count: { select: { players: true } },
             rounds: { select: { winningTeam: true } },
-            // @ts-ignore
             myTeamSide: true,
-            // @ts-ignore
             redTeamName: true,
-            // @ts-ignore
             blueTeamName: true,
-            // @ts-ignore
             redTeamTag: true,
-            // @ts-ignore
             blueTeamTag: true,
         }
-    })
+    }) as MatchWithTeamInfo[]
 
     return (
         <div className="space-y-6">
@@ -311,7 +321,7 @@ export default async function TeamHomePage(props: PageProps) {
 
             {/* Match List */}
             <div className="grid gap-4">
-                {matches.map((match: any) => {
+                {matches.map((match) => {
                     const mapName = getMapDisplayName(match.mapId);
                     const date = new Date(Number(match.gameStartMillis)).toLocaleDateString('ja-JP');
                     const redScore = match.rounds.filter((r: any) => r.winningTeam === 'Red').length;

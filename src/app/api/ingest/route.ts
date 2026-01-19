@@ -46,20 +46,31 @@ export async function POST() {
         let skippedCount = 0;
         const results = [];
 
-        for (const file of files) {
-            try {
-                const result = await importMatch(path.join(matchesDir, file));
-                if (result.status === 'imported') {
-                    importedCount++;
-                }
-                if (result.status === 'skipped') {
-                    skippedCount++;
-                }
-                results.push({ file, ...result });
-            } catch (error) {
-                console.error(`Error importing ${file}:`, error);
-                results.push({ file, status: 'error', error: String(error) });
-            }
+        const MAX_CONCURRENT = 5;
+        const chunks = [];
+        for (let i = 0; i < files.length; i += MAX_CONCURRENT) {
+            chunks.push(files.slice(i, i + MAX_CONCURRENT));
+        }
+
+        for (const chunk of chunks) {
+            const chunkResults = await Promise.all(
+                chunk.map(async (file) => {
+                    try {
+                        const result = await importMatch(path.join(matchesDir, file));
+                        if (result.status === 'imported') {
+                            importedCount++;
+                        }
+                        if (result.status === 'skipped') {
+                            skippedCount++;
+                        }
+                        return { file, ...result };
+                    } catch (error) {
+                        console.error(`Error importing ${file}:`, error);
+                        return { file, status: 'error', error: String(error) };
+                    }
+                })
+            );
+            results.push(...chunkResults);
         }
 
         return NextResponse.json({

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { getMapDisplayName } from '@/lib/utils';
 import { MAP_CONFIGS } from '@/lib/map-configs';
 
@@ -59,7 +59,6 @@ export function MatchHeatmap({ mapId, points }: MatchHeatmapProps) {
             const img = imgRef.current;
             if (!img || !img.complete) return;
 
-            // Use image's natural aspect ratio
             const containerWidth = container.clientWidth;
             const imageAspectRatio = img.naturalHeight / img.naturalWidth;
             const width = containerWidth;
@@ -67,6 +66,14 @@ export function MatchHeatmap({ mapId, points }: MatchHeatmapProps) {
 
             canvas.width = width;
             canvas.height = height;
+
+            const heatmapPoints: HeatmapPoint[] = filteredPoints.map((loc) => {
+                const normalizedX = loc.x * mapConfig.xMultiplier + mapConfig.xScalarToAdd;
+                const normalizedY = loc.y * mapConfig.yMultiplier + mapConfig.yScalarToAdd;
+                const canvasX = normalizedX * width;
+                const canvasY = normalizedY * height;
+                return { x: canvasX, y: canvasY, intensity: 1 };
+            });
 
             // Apply display rotation to the entire context
             ctx.save();
@@ -87,18 +94,7 @@ export function MatchHeatmap({ mapId, points }: MatchHeatmapProps) {
                 ctx.drawImage(img, 0, 0, width, height);
             }
 
-            const heatmapPoints: HeatmapPoint[] = filteredPoints.map((loc) => {
-                const normalizedX = loc.x * mapConfig.xMultiplier + mapConfig.xScalarToAdd;
-                const normalizedY = loc.y * mapConfig.yMultiplier + mapConfig.yScalarToAdd;
-                const canvasX = normalizedX * width;
-                const canvasY = normalizedY * height;
 
-                return {
-                    x: canvasX,
-                    y: canvasY,
-                    intensity: 1,
-                };
-            });
 
             const heatmapCanvas = document.createElement('canvas');
             heatmapCanvas.width = width;
@@ -112,22 +108,46 @@ export function MatchHeatmap({ mapId, points }: MatchHeatmapProps) {
             const imageData = heatmapCtx.createImageData(width, height);
             const data = imageData.data;
 
+            const spatialGrid = new Map<number, HeatmapPoint[]>();
+            const gridSize = 60;
+
+            heatmapPoints.forEach(point => {
+                const gridX = Math.floor(point.x / gridSize);
+                const gridY = Math.floor(point.y / gridSize);
+                const gridKey = gridX * 1000 + gridY;
+
+                if (!spatialGrid.has(gridKey)) {
+                    spatialGrid.set(gridKey, []);
+                }
+                spatialGrid.get(gridKey)!.push(point);
+            });
+
             for (let i = 0; i < data.length; i += 4) {
                 const pixelIndex = i / 4;
                 const pixelX = pixelIndex % width;
                 const pixelY = Math.floor(pixelIndex / width);
 
                 let heatValue = 0;
-                const radius = 60;
+                const gridX = Math.floor(pixelX / gridSize);
+                const gridY = Math.floor(pixelY / gridSize);
 
-                for (const point of heatmapPoints) {
-                    const dx = pixelX - point.x;
-                    const dy = pixelY - point.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        const gridKey = (gridX + dx) * 1000 + (gridY + dy);
+                        const points = spatialGrid.get(gridKey);
 
-                    if (distance < radius) {
-                        const influence = (1 - distance / radius) * 0.8;
-                        heatValue += influence;
+                        if (points) {
+                            for (const point of points) {
+                                const diffX = pixelX - point.x;
+                                const diffY = pixelY - point.y;
+                                const distance = Math.sqrt(diffX * diffX + diffY * diffY);
+
+                                if (distance < 60) {
+                                    const influence = (1 - distance / 60) * 0.8;
+                                    heatValue += influence;
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -204,6 +224,7 @@ export function MatchHeatmap({ mapId, points }: MatchHeatmapProps) {
             ctx.restore();
         }
     }, [mapConfig, filteredPoints, activeTab]);
+
 
     if (!mapConfig) {
         return (
