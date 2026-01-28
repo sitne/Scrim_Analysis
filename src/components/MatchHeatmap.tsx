@@ -61,8 +61,10 @@ export function MatchHeatmap({ mapId, points }: MatchHeatmapProps) {
 
             const containerWidth = container.clientWidth;
             const imageAspectRatio = img.naturalHeight / img.naturalWidth;
-            const width = containerWidth;
-            const height = containerWidth * imageAspectRatio;
+            const width = Math.round(containerWidth);
+            const height = Math.round(containerWidth * imageAspectRatio);
+
+            if (width <= 0 || height <= 0) return;
 
             canvas.width = width;
             canvas.height = height;
