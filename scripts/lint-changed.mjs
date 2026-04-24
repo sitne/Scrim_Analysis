@@ -56,4 +56,9 @@ if (lintTargets.length === 0) {
   process.exit(0);
 }
 
-execFileSync('npx', ['eslint', ...lintTargets], { stdio: 'inherit' });
+const chunkSize = 500;
+
+for (let index = 0; index < lintTargets.length; index += chunkSize) {
+  const chunk = lintTargets.slice(index, index + chunkSize);
+  execFileSync('npx', ['eslint', '--pass-on-no-patterns', ...chunk], { stdio: 'inherit' });
+}

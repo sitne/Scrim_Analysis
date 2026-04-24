@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import { useState, useRef, useEffect } from 'react';
 
 // Pearl用のテストポイント
@@ -112,13 +111,11 @@ export default function MapCalibrator() {
     return (
         <div className="flex gap-4 p-4 bg-gray-900 text-white min-h-screen">
             <div className="flex-1 overflow-auto">
-                <Image
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                     ref={imgRef}
                     src="/maps/pearl.png"
                     alt="map"
-                    width={1}
-                    height={1}
-                    unoptimized
                     className="hidden"
                     onLoad={() => setConfig({ ...config })}
                 />

@@ -8,7 +8,6 @@ interface MatchSettingsDialogProps {
     matchId: string;
     teamId: string;
     currentOpponentName: string;
-    currentOpponentTag?: string;
     onClose: () => void;
     onUpdate?: () => void;
 }

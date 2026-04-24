@@ -29,10 +29,10 @@ export function FilterBar({
     const [isCollapsed, setIsCollapsed] = useState(true);
     const [opponentSearch, setOpponentSearch] = useState<string>('');
 
-    const parsedSelectedMaps = searchParams.get('maps')?.split(',').filter(Boolean) || [];
-    const parsedSelectedAgents = searchParams.get('agents')?.split(',').filter(Boolean) || [];
-    const parsedSelectedOpponents = searchParams.get('opponents')?.split(',').filter(Boolean) || [];
-    const parsedDateRange = {
+    const selectedMaps = searchParams.get('maps')?.split(',').filter(Boolean) || [];
+    const selectedAgents = searchParams.get('agents')?.split(',').filter(Boolean) || [];
+    const selectedOpponents = searchParams.get('opponents')?.split(',').filter(Boolean) || [];
+    const dateRange = {
         start: searchParams.get('startDate') || '',
         end: searchParams.get('endDate') || ''
     };
@@ -48,13 +48,9 @@ export function FilterBar({
             }
         });
 
-        router.push(`${pathname}?${params.toString()}`, { scroll: false });
+        const query = params.toString();
+        router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
     }, [pathname, router, searchParams]);
-
-    const selectedMaps = parsedSelectedMaps;
-    const selectedAgents = parsedSelectedAgents;
-    const selectedOpponents = parsedSelectedOpponents;
-    const dateRange = parsedDateRange;
 
     const handleMultiSelect = (
         key: string,
@@ -69,13 +65,13 @@ export function FilterBar({
     };
 
     const handleOpponentSelect = (name: string) => {
-        const isSelected = parsedSelectedOpponents.includes(name);
+        const isSelected = selectedOpponents.includes(name);
 
         let newSelection;
         if (isSelected) {
-            newSelection = parsedSelectedOpponents.filter(o => o !== name);
+            newSelection = selectedOpponents.filter(o => o !== name);
         } else {
-            newSelection = [...parsedSelectedOpponents, name];
+            newSelection = [...selectedOpponents, name];
         }
 
         updateFilters({ opponents: newSelection.join(',') });
@@ -83,8 +79,8 @@ export function FilterBar({
 
     const handleDateChange = (type: 'start' | 'end', value: string) => {
         updateFilters({
-            startDate: type === 'start' ? value : parsedDateRange.start,
-            endDate: type === 'end' ? value : parsedDateRange.end
+            startDate: type === 'start' ? value : dateRange.start,
+            endDate: type === 'end' ? value : dateRange.end
         });
     };
 
@@ -99,7 +95,7 @@ export function FilterBar({
     );
 
     // Count active filters
-    const activeFilterCount = parsedSelectedMaps.length + parsedSelectedAgents.length + parsedSelectedOpponents.length + (parsedDateRange.start ? 1 : 0) + (parsedDateRange.end ? 1 : 0);
+    const activeFilterCount = selectedMaps.length + selectedAgents.length + selectedOpponents.length + (dateRange.start ? 1 : 0) + (dateRange.end ? 1 : 0);
 
     return (
         <div className="bg-transparent overflow-hidden">
@@ -264,7 +260,13 @@ export function FilterBar({
                             <button
                                 onClick={() => {
                                     setOpponentSearch('');
-                                    router.push(pathname);
+                                    updateFilters({
+                                        maps: null,
+                                        agents: null,
+                                        opponents: null,
+                                        startDate: null,
+                                        endDate: null,
+                                    });
                                 }}
                                 className="group flex items-center gap-2 text-[10px] font-black uppercase tracking-tighter text-gray-500 hover:text-red-500 transition-all"
                             >

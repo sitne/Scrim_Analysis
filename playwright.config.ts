@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Default E2E_TEST_MODE for local runs; CI sets it explicitly.
+// The Next.js middleware reads the same flag to bypass auth in smoke tests.
 process.env.E2E_TEST_MODE ??= '1';
 
 export default defineConfig({
