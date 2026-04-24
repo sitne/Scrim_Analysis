@@ -61,7 +61,39 @@ export interface MapStat {
     opportunity4v5: number;
     winRate5v4: number;
     winRate4v5: number;
+    win5v4Attack: number;
+    opportunity5v4Attack: number;
+    win5v4Defense: number;
+    opportunity5v4Defense: number;
+    win4v5Attack: number;
+    opportunity4v5Attack: number;
+    win4v5Defense: number;
+    opportunity4v5Defense: number;
+    winRate5v4Attack: number;
+    winRate5v4Defense: number;
+    winRate4v5Attack: number;
+    winRate4v5Defense: number;
 }
+
+type MapStatDerivedField =
+    | 'mapName'
+    | 'myTeamWinRate'
+    | 'enemyWinRate'
+    | 'attackWinRate'
+    | 'defenseWinRate'
+    | 'pistolWinRate'
+    | 'pistolAttackWinRate'
+    | 'pistolDefenseWinRate'
+    | 'retakeSuccessRate'
+    | 'postPlantWinRate'
+    | 'winRate5v4'
+    | 'winRate4v5'
+    | 'winRate5v4Attack'
+    | 'winRate5v4Defense'
+    | 'winRate4v5Attack'
+    | 'winRate4v5Defense';
+
+type MapStatRaw = Omit<MapStat, MapStatDerivedField>;
 
 export interface AgentStat {
     agentId: string;
@@ -109,7 +141,7 @@ export function calculateStats(
     let totalRounds = 0;
 
     // 2. Map Stats
-    const mapStatsMap = new Map<string, Omit<MapStat, 'mapName' | 'myTeamWinRate' | 'enemyWinRate' | 'attackWinRate' | 'defenseWinRate' | 'pistolWinRate' | 'pistolAttackWinRate' | 'pistolDefenseWinRate' | 'retakeSuccessRate' | 'postPlantWinRate' | 'winRate5v4' | 'winRate4v5'>>();
+    const mapStatsMap = new Map<string, MapStatRaw>();
 
     // 3. Agent Stats (Filtered Players only)
     const agentStatsMap = new Map<string, { picks: number; wins: number; matches: number }>();
@@ -149,7 +181,11 @@ export function calculateStats(
                 retakeOpportunities: 0, retakeSuccesses: 0,
                 postPlantOpportunities: 0, postPlantWins: 0,
                 win5v4: 0, opportunity5v4: 0,
-                win4v5: 0, opportunity4v5: 0
+                win4v5: 0, opportunity4v5: 0,
+                win5v4Attack: 0, opportunity5v4Attack: 0,
+                win5v4Defense: 0, opportunity5v4Defense: 0,
+                win4v5Attack: 0, opportunity4v5Attack: 0,
+                win4v5Defense: 0, opportunity4v5Defense: 0,
             });
         }
         const mapStat = mapStatsMap.get(match.mapId)!;
@@ -292,9 +328,9 @@ export function calculateStats(
                     if (currentSide === 'Defense') {
                         if (round.roundResult !== 'Round timer expired') {
                             mapStat.retakeOpportunities++;
-                            if (weWon) mapStat.retakeSuccesses++;
-                        }
-                    } else {
+                        if (weWon) mapStat.retakeSuccesses++;
+                    }
+                } else {
                         let isValidPostPlant = true;
                         if (round.roundResult === 'Eliminated') {
                             if (roundKills.length > 0) {
@@ -343,15 +379,32 @@ export function calculateStats(
                         if (!validTrade) {
                             const isMyTeamKiller = killerTeamId === myTeamSide;
                             const weWon = round.winningTeam === myTeamSide;
+                            const isAttack = currentSide === 'Attack';
 
                             if (isMyTeamKiller) {
                                 // 5v4
                                 mapStat.opportunity5v4++;
                                 if (weWon) mapStat.win5v4++;
+
+                                if (isAttack) {
+                                    mapStat.opportunity5v4Attack++;
+                                    if (weWon) mapStat.win5v4Attack++;
+                                } else {
+                                    mapStat.opportunity5v4Defense++;
+                                    if (weWon) mapStat.win5v4Defense++;
+                                }
                             } else {
                                 // 4v5
                                 mapStat.opportunity4v5++;
                                 if (weWon) mapStat.win4v5++;
+
+                                if (isAttack) {
+                                    mapStat.opportunity4v5Attack++;
+                                    if (weWon) mapStat.win4v5Attack++;
+                                } else {
+                                    mapStat.opportunity4v5Defense++;
+                                    if (weWon) mapStat.win4v5Defense++;
+                                }
                             }
                         }
                     }
@@ -376,6 +429,10 @@ export function calculateStats(
         postPlantWinRate: stat.postPlantOpportunities > 0 ? (stat.postPlantWins / stat.postPlantOpportunities) * 100 : 0,
         winRate5v4: stat.opportunity5v4 > 0 ? (stat.win5v4 / stat.opportunity5v4) * 100 : 0,
         winRate4v5: stat.opportunity4v5 > 0 ? (stat.win4v5 / stat.opportunity4v5) * 100 : 0,
+        winRate5v4Attack: stat.opportunity5v4Attack > 0 ? (stat.win5v4Attack / stat.opportunity5v4Attack) * 100 : 0,
+        winRate5v4Defense: stat.opportunity5v4Defense > 0 ? (stat.win5v4Defense / stat.opportunity5v4Defense) * 100 : 0,
+        winRate4v5Attack: stat.opportunity4v5Attack > 0 ? (stat.win4v5Attack / stat.opportunity4v5Attack) * 100 : 0,
+        winRate4v5Defense: stat.opportunity4v5Defense > 0 ? (stat.win4v5Defense / stat.opportunity4v5Defense) * 100 : 0,
     }));
 
     const roleOrder: Record<string, number> = {

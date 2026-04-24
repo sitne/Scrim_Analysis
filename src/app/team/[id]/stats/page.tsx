@@ -64,7 +64,7 @@ export default async function TeamStatsPage(props: PageProps) {
     const filterOpponents = typeof searchParams.opponents === 'string' ? searchParams.opponents.split(',') : [];
 
     // 4. チーム単位でデータ取得
-    const [matchesForOpponentsResult, matchesData, agentsData] = await Promise.all([
+    const [matchesForOpponents, matchesData, agentsData] = await Promise.all([
         prisma.match.findMany({
             where: { teamId: id },
             select: {
@@ -73,7 +73,7 @@ export default async function TeamStatsPage(props: PageProps) {
                 redTeamTag: true,
                 blueTeamName: true,
                 blueTeamTag: true
-            } as any
+            }
         }),
         prisma.match.findMany({
             where: { teamId: id },
@@ -90,8 +90,6 @@ export default async function TeamStatsPage(props: PageProps) {
             distinct: ['characterId']
         })
     ]);
-
-    const matchesForOpponents = matchesForOpponentsResult as any[];
 
     // Opponent Aggregation
     const opponentsMap = new Map<string, { name: string; count: number }>();
@@ -129,7 +127,7 @@ export default async function TeamStatsPage(props: PageProps) {
     }
 
     if (filterOpponents.length > 0) {
-        const conditions: any[] = [];
+        const conditions: Prisma.MatchWhereInput[] = [];
 
         filterOpponents.forEach(name => {
             // Condition 1: We are Red, Opponent is Blue
@@ -149,7 +147,6 @@ export default async function TeamStatsPage(props: PageProps) {
         });
 
         if (conditions.length > 0) {
-            // @ts-ignore
             whereClause.OR = conditions;
         }
     }
@@ -366,7 +363,7 @@ export default async function TeamStatsPage(props: PageProps) {
                                             <th className="p-3 text-center border-r border-gray-800" colSpan={3}>勝率 (%)</th>
                                             <th className="p-3 text-center border-r border-gray-800" colSpan={2}>ピストル</th>
                                             <th className="p-3 text-center border-r border-gray-800" colSpan={2}>スパイク設置後</th>
-                                            <th className="p-3 text-center" colSpan={2}>人数状況別勝率</th>
+                                            <th className="p-3 text-center" colSpan={4}>人数状況別勝率</th>
                                         </tr>
                                         <tr className="bg-gray-800/20 text-[9px]">
                                             {/* 勝率内訳 */}
@@ -380,8 +377,10 @@ export default async function TeamStatsPage(props: PageProps) {
                                             <th className="p-1 text-center text-orange-400 border-r border-gray-800/50">ATK</th>
                                             <th className="p-1 text-center text-blue-400 border-r border-gray-800">DEF (Retake)</th>
                                             {/* アドバンテージ内訳 */}
-                                            <th className="p-1 text-center text-green-500 normal-case border-r border-gray-800/50">5v4</th>
-                                            <th className="p-1 text-center text-red-500 normal-case">4v5</th>
+                                            <th className="p-1 text-center text-green-500 normal-case border-r border-gray-800/50">5v4 ATK</th>
+                                            <th className="p-1 text-center text-green-500 normal-case border-r border-gray-800/50">5v4 DEF</th>
+                                            <th className="p-1 text-center text-red-500 normal-case border-r border-gray-800/50">4v5 ATK</th>
+                                            <th className="p-1 text-center text-red-500 normal-case">4v5 DEF</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-800">
@@ -425,12 +424,20 @@ export default async function TeamStatsPage(props: PageProps) {
 
                                                 {/* アドバンテージ(5v4/4v5) */}
                                                 <td className="p-3 text-center bg-green-500/5 border-r border-gray-800/30">
-                                                    <div className="text-green-400 font-bold text-sm">{stat.winRate5v4.toFixed(1)}%</div>
-                                                    <div className="text-[9px] text-gray-500 font-mono">({stat.win5v4}/{stat.opportunity5v4})</div>
+                                                    <div className="text-green-400 font-bold text-sm">{stat.winRate5v4Attack.toFixed(1)}%</div>
+                                                    <div className="text-[9px] text-gray-500 font-mono">({stat.win5v4Attack}/{stat.opportunity5v4Attack})</div>
+                                                </td>
+                                                <td className="p-3 text-center bg-green-500/5 border-r border-gray-800/30">
+                                                    <div className="text-green-400 font-bold text-sm">{stat.winRate5v4Defense.toFixed(1)}%</div>
+                                                    <div className="text-[9px] text-gray-500 font-mono">({stat.win5v4Defense}/{stat.opportunity5v4Defense})</div>
+                                                </td>
+                                                <td className="p-3 text-center bg-red-500/5 border-r border-gray-800/30">
+                                                    <div className="text-red-400 font-bold text-sm">{stat.winRate4v5Attack.toFixed(1)}%</div>
+                                                    <div className="text-[9px] text-gray-500 font-mono">({stat.win4v5Attack}/{stat.opportunity4v5Attack})</div>
                                                 </td>
                                                 <td className="p-3 text-center bg-red-500/5">
-                                                    <div className="text-red-400 font-bold text-sm">{stat.winRate4v5.toFixed(1)}%</div>
-                                                    <div className="text-[9px] text-gray-500 font-mono">({stat.win4v5}/{stat.opportunity4v5})</div>
+                                                    <div className="text-red-400 font-bold text-sm">{stat.winRate4v5Defense.toFixed(1)}%</div>
+                                                    <div className="text-[9px] text-gray-500 font-mono">({stat.win4v5Defense}/{stat.opportunity4v5Defense})</div>
                                                 </td>
                                             </tr>
                                         ))}
