@@ -17,7 +17,6 @@ export function MatchSettingsDialog({
     matchId,
     teamId,
     currentOpponentName,
-    currentOpponentTag,
     onClose,
     onUpdate
 }: MatchSettingsDialogProps) {
@@ -63,8 +62,8 @@ export function MatchSettingsDialog({
                 router.refresh();
             }
             onClose();
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to update match');
         } finally {
             setIsLoading(false);
         }

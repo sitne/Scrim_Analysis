@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Settings, X } from 'lucide-react';
 
 interface Player {
@@ -50,8 +50,8 @@ export function PlayerSettingsDialog({ player, allPlayers, onClose, onUpdate }: 
 
             onUpdate();
             onClose();
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to update player');
         } finally {
             setIsLoading(false);
         }
@@ -82,8 +82,8 @@ export function PlayerSettingsDialog({ player, allPlayers, onClose, onUpdate }: 
             // If the dialog is controlled by parent state which is reset on refresh, it will close.
             // Let's assume it closes for now, which is fine.
             onClose();
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to unlink player');
             setIsLoading(false);
         }
     };
@@ -150,7 +150,7 @@ export function PlayerSettingsDialog({ player, allPlayers, onClose, onUpdate }: 
                             ))}
                         </select>
                         <p className="text-xs text-gray-500 mt-1">
-                            Select a primary account to merge this player's stats into.
+                            Select a primary account to merge this player&apos;s stats into.
                         </p>
                     </div>
 
