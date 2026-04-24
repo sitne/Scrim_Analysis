@@ -111,7 +111,7 @@ export default function MapCalibrator() {
     return (
         <div className="flex gap-4 p-4 bg-gray-900 text-white min-h-screen">
             <div className="flex-1 overflow-auto">
-                {/* 画像パスは適宜変更してください */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                     ref={imgRef}
                     src="/maps/pearl.png"
@@ -224,15 +224,14 @@ export default function MapCalibrator() {
 
                 {/* --- 結果出力 --- */}
                 <div className="mt-4 p-3 bg-black rounded border border-gray-700 font-mono text-xs overflow-x-auto select-all">
-                    <p className="text-gray-500 mb-1">// Copy this to MAP_CONFIGS</p>
+                    <p className="text-gray-500 mb-1">Copy this to MAP_CONFIGS</p>
                     <p><span className="text-blue-400">xMultiplier:</span> {config.xMultiplier},</p>
                     <p><span className="text-blue-400">yMultiplier:</span> {config.yMultiplier},</p>
                     <p><span className="text-green-400">xScalarToAdd:</span> {config.xScalar},</p>
                     <p><span className="text-green-400">yScalarToAdd:</span> {config.yScalar},</p>
                     <p><span className="text-purple-400">rotation:</span> {config.rotation},</p>
-                    {/* SwapAxisはコードのロジックを変える必要があるため注意書き */}
                     <p className="text-yellow-500 mt-2">
-                        {swapAxis ? '// NOTE: Requires Axis Swap (loc.y * xMult)' : '// NOTE: Standard Axis (loc.x * xMult)'}
+                        {swapAxis ? 'NOTE: Requires Axis Swap (loc.y * xMult)' : 'NOTE: Standard Axis (loc.x * xMult)'}
                     </p>
                 </div>
             </div>

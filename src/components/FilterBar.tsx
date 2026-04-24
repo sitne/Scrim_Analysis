@@ -1,8 +1,8 @@
 'use client';
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useCallback, useState, useEffect } from 'react';
-import { getAgentName, getMapDisplayName, getTagColor } from '@/lib/utils';
+import { useCallback, useState } from 'react';
+import { getAgentName, getMapDisplayName } from '@/lib/utils';
 import { ChevronDown, ChevronUp, Filter } from 'lucide-react';
 
 interface FilterBarProps {
@@ -26,41 +26,18 @@ export function FilterBar({
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    // Collapse state
     const [isCollapsed, setIsCollapsed] = useState(true);
-
-    // Local state for UI (syncs with URL on mount/update)
-    const [selectedMaps, setSelectedMaps] = useState<string[]>([]);
-    const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
-    const [selectedOpponents, setSelectedOpponents] = useState<string[]>([]);
     const [opponentSearch, setOpponentSearch] = useState<string>('');
-    const [dateRange, setDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
-    const [availableTags, setAvailableTags] = useState<string[]>([]);
-    const [includeTags, setIncludeTags] = useState<string[]>([]);
-    const [excludeTags, setExcludeTags] = useState<string[]>([]);
 
-    // Sync state from URL
-    useEffect(() => {
-        setSelectedMaps(searchParams.get('maps')?.split(',').filter(Boolean) || []);
-        setSelectedAgents(searchParams.get('agents')?.split(',').filter(Boolean) || []);
-
-        const rawOpponents = searchParams.get('opponents')?.split(',').filter(Boolean) || [];
-        setSelectedOpponents(rawOpponents);
-
-        setIncludeTags(searchParams.get('includeTags')?.split(',').filter(Boolean) || []);
-        setExcludeTags(searchParams.get('excludeTags')?.split(',').filter(Boolean) || []);
-
-        setDateRange({
-            start: searchParams.get('startDate') || '',
-            end: searchParams.get('endDate') || ''
-        });
-
-        // Fetch tags
-        fetch('/api/tags')
-            .then(res => res.json())
-            .then(data => setAvailableTags(data))
-            .catch(err => console.error('Failed to fetch tags', err));
-    }, [searchParams]);
+    const selectedMaps = searchParams.get('maps')?.split(',').filter(Boolean) || [];
+    const selectedAgents = searchParams.get('agents')?.split(',').filter(Boolean) || [];
+    const selectedOpponents = searchParams.get('opponents')?.split(',').filter(Boolean) || [];
+    const includeTags = searchParams.get('includeTags')?.split(',').filter(Boolean) || [];
+    const excludeTags = searchParams.get('excludeTags')?.split(',').filter(Boolean) || [];
+    const dateRange = {
+        start: searchParams.get('startDate') || '',
+        end: searchParams.get('endDate') || ''
+    };
 
     const updateFilters = useCallback((newParams: Record<string, string | null>) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -73,20 +50,19 @@ export function FilterBar({
             }
         });
 
-        router.push(`${pathname}?${params.toString()}`, { scroll: false });
+        const query = params.toString();
+        router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
     }, [pathname, router, searchParams]);
 
     const handleMultiSelect = (
         key: string,
         currentSelection: string[],
         value: string,
-        setFn: (val: string[]) => void
     ) => {
         const newSelection = currentSelection.includes(value)
             ? currentSelection.filter(v => v !== value)
             : [...currentSelection, value];
 
-        setFn(newSelection);
         updateFilters({ [key]: newSelection.join(',') });
     };
 
@@ -100,21 +76,15 @@ export function FilterBar({
             newSelection = [...selectedOpponents, name];
         }
 
-        setSelectedOpponents(newSelection);
         updateFilters({ opponents: newSelection.join(',') });
-    }
+    };
 
     const handleDateChange = (type: 'start' | 'end', value: string) => {
-        const newRange = { ...dateRange, [type]: value };
-        setDateRange(newRange);
         updateFilters({
             startDate: type === 'start' ? value : dateRange.start,
             endDate: type === 'end' ? value : dateRange.end
         });
     };
-
-    // Show only top 5 players by default
-    const [showAllPlayers, setShowAllPlayers] = useState<boolean>(false);
 
     // Handle opponent search input (local filter only, does not filter matches)
     const handleOpponentSearchChange = (value: string) => {
@@ -127,10 +97,10 @@ export function FilterBar({
     );
 
     // Count active filters
-    const activeFilterCount = selectedMaps.length + selectedAgents.length + includeTags.length + excludeTags.length + selectedOpponents.length + (dateRange.start ? 1 : 0) + (dateRange.end ? 1 : 0);
+    const activeFilterCount = selectedMaps.length + selectedAgents.length + selectedOpponents.length + includeTags.length + excludeTags.length + (dateRange.start ? 1 : 0) + (dateRange.end ? 1 : 0);
 
     return (
-        <div className="bg-transparent overflow-hidden"> {/* 背景と枠線を消す */}
+        <div className="bg-transparent overflow-hidden">
             {/* Header / Toggle */}
             <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
@@ -193,7 +163,7 @@ export function FilterBar({
                                     {maps.map(mapId => (
                                         <button
                                             key={mapId}
-                                            onClick={() => handleMultiSelect('maps', selectedMaps, mapId, setSelectedMaps)}
+                                            onClick={() => handleMultiSelect('maps', selectedMaps, mapId)}
                                             className={`px-3 py-1.5 text-[11px] font-bold uppercase transition-all border ${selectedMaps.includes(mapId)
                                                 ? 'bg-red-600 border-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.4)]'
                                                 : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:border-white/20'
@@ -214,7 +184,7 @@ export function FilterBar({
                                     {agents.map(agentId => (
                                         <button
                                             key={agentId}
-                                            onClick={() => handleMultiSelect('agents', selectedAgents, agentId, setSelectedAgents)}
+                                            onClick={() => handleMultiSelect('agents', selectedAgents, agentId)}
                                             className={`px-3 py-1.5 text-[11px] font-bold uppercase transition-all border ${selectedAgents.includes(agentId)
                                                 ? 'bg-white text-black border-white'
                                                 : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
@@ -291,14 +261,16 @@ export function FilterBar({
                         <div className="flex items-end justify-end">
                             <button
                                 onClick={() => {
-                                    setSelectedMaps([]);
-                                    setSelectedAgents([]);
-                                    setSelectedOpponents([]);
                                     setOpponentSearch('');
-                                    setIncludeTags([]);
-                                    setExcludeTags([]);
-                                    setDateRange({ start: '', end: '' });
-                                    router.push(pathname);
+                                    updateFilters({
+                                        maps: null,
+                                        agents: null,
+                                        opponents: null,
+                                        includeTags: null,
+                                        excludeTags: null,
+                                        startDate: null,
+                                        endDate: null,
+                                    });
                                 }}
                                 className="group flex items-center gap-2 text-[10px] font-black uppercase tracking-tighter text-gray-500 hover:text-red-500 transition-all"
                             >
