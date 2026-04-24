@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function updateSession(request: NextRequest) {
     const isAuthPage = request.nextUrl.pathname.startsWith('/auth')
 
-    if (process.env.E2E_TEST_MODE === '1') {
+    if (process.env.E2E_TEST_MODE === '1' && process.env.NODE_ENV !== 'production') {
         if (!isAuthPage) {
             const url = request.nextUrl.clone()
             url.pathname = '/auth/login'
