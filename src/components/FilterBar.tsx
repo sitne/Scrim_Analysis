@@ -32,6 +32,8 @@ export function FilterBar({
     const selectedMaps = searchParams.get('maps')?.split(',').filter(Boolean) || [];
     const selectedAgents = searchParams.get('agents')?.split(',').filter(Boolean) || [];
     const selectedOpponents = searchParams.get('opponents')?.split(',').filter(Boolean) || [];
+    const includeTags = searchParams.get('includeTags')?.split(',').filter(Boolean) || [];
+    const excludeTags = searchParams.get('excludeTags')?.split(',').filter(Boolean) || [];
     const dateRange = {
         start: searchParams.get('startDate') || '',
         end: searchParams.get('endDate') || ''
@@ -95,7 +97,7 @@ export function FilterBar({
     );
 
     // Count active filters
-    const activeFilterCount = selectedMaps.length + selectedAgents.length + selectedOpponents.length + (dateRange.start ? 1 : 0) + (dateRange.end ? 1 : 0);
+    const activeFilterCount = selectedMaps.length + selectedAgents.length + selectedOpponents.length + includeTags.length + excludeTags.length + (dateRange.start ? 1 : 0) + (dateRange.end ? 1 : 0);
 
     return (
         <div className="bg-transparent overflow-hidden">
@@ -264,6 +266,8 @@ export function FilterBar({
                                         maps: null,
                                         agents: null,
                                         opponents: null,
+                                        includeTags: null,
+                                        excludeTags: null,
                                         startDate: null,
                                         endDate: null,
                                     });
